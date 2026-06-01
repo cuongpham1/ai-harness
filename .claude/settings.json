@@ -182,6 +182,14 @@
                         "command": "node scripts/hooks/auto-checkpoint.js"
                     }
                 ]
+            },
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/backlog-surface.mjs"
+                    }
+                ]
             }
         ]
     }

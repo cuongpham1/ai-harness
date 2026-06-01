@@ -175,8 +175,8 @@ fi
 [[ -n "$VERIFY_LINT" ]] && LINT_CMD="$VERIFY_LINT"
 [[ -n "$VERIFY_TEST" ]] && TEST_CMD="$VERIFY_TEST"
 
-# Installer repo without .harness-profile: use local Rust when Cargo.toml present
-if [[ -z "$TEST_CMD" && -f "$ROOT/Cargo.toml" ]]; then
+# Installer repo without .harness-profile: use local Rust when Cargo.toml present AND cargo available
+if [[ -z "$TEST_CMD" && -f "$ROOT/Cargo.toml" ]] && command -v cargo &>/dev/null; then
   LINT_CMD="${LINT_CMD:-cargo fmt --check}"
   TEST_CMD="cargo test --quiet"
 fi
@@ -234,7 +234,7 @@ run_step test "$TEST_CMD" || true
 if [[ "$LANE" == "high_risk" && -x "$ROOT/scripts/bin/harness-cli" ]]; then
   echo "  [decisions] harness-cli decision verify"
   while IFS= read -r dec_id; do
-    [[ -z "$dec_id" ]] && continue
+    [[ -z "$dec_id" || "$dec_id" == "id" || "$dec_id" =~ ^-+$ ]] && continue
     if (cd "$ROOT" && scripts/bin/harness-cli decision verify "$dec_id" >/dev/null 2>&1); then
       EVIDENCE+=("decision:${dec_id}:pass")
     else

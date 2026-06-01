@@ -402,7 +402,9 @@ refresh_critical_scripts() {
     scripts/hooks/lib-harness-task.mjs \
     scripts/hooks/update-pm-readme.js \
     scripts/hooks/session-start-pm.js \
-    scripts/hooks/run-harness-verify.mjs; do
+    scripts/hooks/run-harness-verify.mjs \
+    scripts/hooks/backlog-surface.mjs \
+    scripts/batch-verify.sh; do
     src="$HARNESS_DIR/$rel"
     dst="$TARGET/$rel"
     [[ -f "$src" ]] || continue
@@ -428,6 +430,7 @@ copy_file "scripts/friction-by-component.mjs"
 copy_file "scripts/verify-h3.sh"
 copy_file "scripts/verify-h4.sh"
 copy_file "scripts/verify-story.sh"
+copy_file "scripts/batch-verify.sh"
 copy_file "scripts/check-agent-parity.mjs"
 copy_file "docs/HARNESS_VERIFICATION.md"
 copy_file "scripts/rtk-shell.sh"
@@ -442,6 +445,7 @@ chmod +x "$TARGET/scripts/merge-agents-md.sh" 2>/dev/null || true
 chmod +x "$TARGET/scripts/verify-h3.sh" 2>/dev/null || true
 chmod +x "$TARGET/scripts/verify-h4.sh" 2>/dev/null || true
 chmod +x "$TARGET/scripts/verify-story.sh" 2>/dev/null || true
+chmod +x "$TARGET/scripts/batch-verify.sh" 2>/dev/null || true
 chmod +x "$TARGET/scripts/rtk-shell.sh" 2>/dev/null || true
 chmod +x "$TARGET/scripts/rtk-node.sh" 2>/dev/null || true
 chmod +x "$TARGET/scripts/rtk-python.sh" 2>/dev/null || true

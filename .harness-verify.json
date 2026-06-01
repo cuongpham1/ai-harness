@@ -1,0 +1,5 @@
+{
+  "_comment": "Verify config for the harness installer repo. Overrides framework profile fallback.",
+  "lint_cmd": "bash -n install.sh && bash -n scripts/install-skills.sh && bash -n scripts/install-harness.sh",
+  "test_cmd": "node --check scripts/hooks/sync-harness-trace.mjs && node --check scripts/hooks/session-start-pm.js && echo 'JS syntax OK'"
+}
