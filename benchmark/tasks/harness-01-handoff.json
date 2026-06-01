@@ -1,0 +1,7 @@
+{
+  "id": "harness-01-handoff",
+  "type": "harness",
+  "category": "harness",
+  "responsibility": "task_state",
+  "description": "stop-handoff blocks in_progress task without After-Work"
+}

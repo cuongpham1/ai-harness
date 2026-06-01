@@ -1,0 +1,27 @@
+{
+  "id": "python",
+  "display": "Python",
+  "description": "Python services, scripts, or data pipelines",
+  "detect": ["pyproject.toml", "setup.py", "requirements.txt"],
+  "skills": ["python-test"],
+  "mcp_servers": [
+    {
+      "name": "context7",
+      "install_cmd": "See docs/MCP_SETUP.md",
+      "purpose": "Python/library docs on demand",
+      "required": false
+    },
+    {
+      "name": "gitnexus",
+      "install_cmd": "See docs/MCP_SETUP.md",
+      "purpose": "Navigate codebase by symbol",
+      "required": false
+    }
+  ],
+  "agent_overrides": {},
+  "test_cmd": "bash scripts/rtk-python.sh test",
+  "lint_cmd": "bash scripts/rtk-python.sh lint",
+  "run_cmd": "python -m app",
+  "stack_doc": "docs/PYTHON_STACK.md",
+  "token_budget_extra": 1500
+}

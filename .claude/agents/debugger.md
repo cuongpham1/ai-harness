@@ -65,8 +65,8 @@ git diff HEAD~1
 # Find related code
 grep -r "functionName" src/
 
-# Run a specific test
-npm test -- --testPathPattern="auth"
+# Run tests (use framework test command from .harness-profile or stack doc)
+# e.g. npm test, pytest, cargo test, go test ./...
 ```
 
 ## Output format

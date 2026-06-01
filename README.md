@@ -1,17 +1,26 @@
 # AI Harness — Bộ công cụ AI cho dự án
 
-Harness tích hợp Claude Code agents, hooks tự động, và pipeline review vào bất kỳ dự án nào.
+Harness tích hợp Claude Code agents, hooks tự động, pipeline review, và **durable layer** từ [harness-experimental](https://github.com/hoangnb24/harness-experimental) vào bất kỳ dự án nào.
 
 ## Cài đặt
 
 ```bash
-bash install.sh /đường/dẫn/dự-án
+bash install.sh [--yes] [--framework <id>] [--name "<tên>"] /đường/dẫn/dự-án
 ```
 
 Ví dụ:
 ```bash
-bash install.sh ~/projects/my-flutter-app
-bash install.sh ~/projects/my-node-api
+bash install.sh --yes --framework nodejs --name "My API" ~/projects/my-api
+bash install.sh --yes --framework flutter --name "My App" ~/projects/my-app
+bash install.sh ~/projects/existing-app   # merge AGENTS.md, không ghi đè nội dung project
+```
+
+**12 framework profiles:** `flutter`, `react`, `nextjs`, `vue`, `nodejs`, `python`, `go`, `rust`, `java`, `csharp`, `php`, `ruby` — xem [frameworks/README.md](frameworks/README.md).
+
+Cập nhật docs/CLI từ upstream (merge, không ghi đè `.claude/`):
+
+```bash
+bash scripts/install-harness.sh --merge --yes --directory /đường/dẫn/dự-án
 ```
 
 ## Harness gồm gì?
@@ -22,8 +31,40 @@ bash install.sh ~/projects/my-node-api
 | Hooks | `scripts/hooks/` | Tự động enforce quy trình |
 | HUD | `scripts/hud/` | Status line hiển thị trong Claude Code |
 | Knowledge Graph | `scripts/kg.js` | Lưu trữ trạng thái session |
-| Docs | `docs/` | Quy trình, phân loại, test matrix |
+| **Harness CLI** | `scripts/bin/harness-cli` | SQLite durable layer: intake, story, trace, backlog |
+| Docs | `docs/` | Quy trình, phân loại, trace spec, maturity |
 | Task manager | `.project-manager/` | Quản lý task và handoff |
+| Benchmark | `benchmark/` | Harness benchmark tasks |
+
+## Durable layer (harness-cli)
+
+```bash
+scripts/bin/harness-cli init              # tạo harness.db
+scripts/bin/harness-cli query matrix      # trạng thái proof
+scripts/bin/harness-cli intake ...        # phân loại công việc
+scripts/bin/harness-cli trace ...         # ghi trace task
+scripts/bin/harness-cli score-trace       # chấm chất lượng trace
+scripts/bin/harness-cli query friction    # xem friction patterns
+node scripts/friction-by-component.mjs    # group friction by component (H3)
+bash scripts/verify-h3.sh                 # verify H3 maturity
+bash benchmark/run-harness.sh             # deterministic harness benchmark
+```
+
+Chi tiết: `docs/HARNESS.md`, `docs/CURSOR.md`, `docs/TRACE_SPEC.md`, `scripts/README.md`.
+
+## Cursor (full parity)
+
+Cài cùng `install.sh`. Hooks + subagents tự động:
+
+```bash
+bash scripts/install-cursor-layer.sh /path/to/project   # nếu project đã có harness
+```
+
+Xem [docs/CURSOR.md](docs/CURSOR.md).
+
+## Token efficiency
+
+RTK wrappers, MCP (Cursor vs Claude), lane pipeline: [docs/TOKEN_EFFICIENCY.md](docs/TOKEN_EFFICIENCY.md), [docs/MCP_SETUP.md](docs/MCP_SETUP.md).
 
 ## Pipeline (bắt buộc với mọi code change)
 
@@ -69,7 +110,8 @@ PM mark DONE ✅
 | `post-commit-archaeologist.js` | PostToolUse Bash | Track commits |
 | `update-pm-readme.js` | PostToolUse Write | Cập nhật .project-manager/README.md |
 | `auto-checkpoint.js` | Stop | Ghi checkpoint khi session kết thúc |
-| `check-task-handoff.js` | Stop | Block session end nếu thiếu After-Work note |
+| `check-task-handoff.js` | Stop | Block session end nếu thiếu After-Work |
+| `sync-harness-trace.mjs` | Stop | Sync After-Work → harness.db |
 
 ## Phân loại công việc (FEATURE_INTAKE.md)
 
@@ -79,20 +121,18 @@ PM mark DONE ✅
 | normal | feature mới, 1 module | full pipeline |
 | high-risk | cross-module, breaking change | full + architect |
 
-## Flutter commands (nếu cài Flutter mode)
+## Unified trace
 
-```bash
-bash scripts/rtk-flutter.sh test       # filtered (~80% token savings)
-bash scripts/rtk-flutter.sh analyze    # filtered (~70% token savings)
-bash scripts/rtk-flutter.sh pub get    # filtered (~90% token savings)
-flutter test                           # raw output (debug)
-```
+Task file `### After-Work` → hook `sync-harness-trace.mjs` → `harness.db`. Không cần gọi `harness-cli trace` thủ công.
+
+Stack commands: `docs/*_STACK.md` (theo framework đã chọn khi cài).
 
 ## Yêu cầu
 
 - Node.js 18+
 - Claude Code CLI (`claude`)
-- RTK (khuyến nghị): token savings cho git/find/cat/grep
+- RTK (recommended): `scripts/rtk-shell.sh`, `rtk-node.sh`, `rtk-python.sh`, `rtk-flutter.sh` — see `docs/TOKEN_EFFICIENCY.md`
+- `curl` (để download harness-cli khi cài vào dự án mới)
 
 ## Cấu trúc file sau cài đặt
 
@@ -102,6 +142,8 @@ your-project/
 │   ├── agents/          # 11 agent definitions
 │   └── settings.json    # hooks config
 ├── scripts/
+│   ├── bin/harness-cli  # Rust CLI (gitignored, downloaded on install)
+│   ├── schema/          # SQLite migrations
 │   ├── hooks/           # 14 hook scripts
 │   ├── utils/           # atomic-write.js, kg-paths.js
 │   ├── hud/             # HUD components
@@ -109,11 +151,18 @@ your-project/
 ├── docs/
 │   ├── HARNESS.md
 │   ├── FEATURE_INTAKE.md
-│   ├── TEST_MATRIX.md
-│   └── templates/task.md
+│   ├── TRACE_SPEC.md
+│   ├── decisions/
+│   ├── stories/
+│   └── templates/
 ├── kg/runtime/          # runtime state (gitignored)
+├── harness.db           # durable records (gitignored)
 ├── .project-manager/
 │   ├── README.md
 │   └── tasks/
 └── AGENTS.md
 ```
+
+## Upstream
+
+Docs và CLI binary theo [harness-experimental](https://github.com/hoangnb24/harness-experimental). ADR hybrid: `docs/decisions/0006-hybrid-claude-code-harness.md`.

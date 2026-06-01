@@ -1,0 +1,14 @@
+{
+  "id": "php",
+  "display": "PHP (Laravel/Symfony)",
+  "description": "PHP web applications and APIs",
+  "detect": ["composer.json", "artisan", "public/index.php"],
+  "skills": ["php-test"],
+  "mcp_servers": [],
+  "agent_overrides": {},
+  "test_cmd": "composer test 2>/dev/null || ./vendor/bin/phpunit",
+  "lint_cmd": "./vendor/bin/phpstan analyse 2>/dev/null || composer lint",
+  "run_cmd": "php artisan serve 2>/dev/null || php -S localhost:8000 -t public",
+  "stack_doc": "docs/PHP_STACK.md",
+  "token_budget_extra": 1500
+}

@@ -10,9 +10,9 @@
     "resetInMinutes": null
   },
   "agents": {
-    "spawned": 15,
+    "spawned": 120,
     "running": 0,
-    "completed": 23,
+    "completed": 112,
     "types": [
       "unknown"
     ]

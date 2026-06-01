@@ -1,33 +1,37 @@
 # Harness Backlog
 
-Accumulated friction, missing docs, and process gaps found during agent work. Each item is a signal to improve the harness — not the app.
+Accumulated friction and harness improvement ideas. Prefer durable records:
 
-## How to add
-
-When agent work hits friction, append a row:
+```bash
+scripts/bin/harness-cli backlog add --title "short name" --pain "what was hard" --predicted "expected improvement"
+scripts/bin/harness-cli backlog close --id N --outcome "measured result"
+scripts/bin/harness-cli query backlog --open
+scripts/bin/harness-cli query backlog --closed
 ```
-scripts/harness backlog add "description of friction"
-```
-Or manually append to the table below.
 
-## Open Items
+Full review protocol: [FRICTION_REVIEW.md](FRICTION_REVIEW.md).
 
-| ID | Found | Friction | Proposed Fix | Status |
-|---|---|---|---|---|
-| HB-001 | 2026-05-29 | IPO registration form fields/buttons may not respond to mobile-mcp taps — semantics labels missing or incorrect | Add semantics labels to all interactive widgets in registration form | open |
-| HB-002 | 2026-05-29 | `subagent-log.js` and `post-tool-task-tracker.js` were wired but `kg-paths.js` was missing — silent failure | Added `kg-paths.js`; installer should verify utils before wiring hooks | open |
-| HB-003 | 2026-05-29 | `rtk discover` showed 0.1% RTK hook coverage — misleading metric (hook rewrites transparently) | Document that hook rewrites don't show as "rtk" prefix in transcripts | open |
+## Open items
 
-## Closed Items
+| ID | Found | Friction | Proposed fix | Status |
+|----|-------|----------|--------------|--------|
+| — | — | Add rows when friction is found | — | — |
+
+## Closed items
 
 | ID | Closed | Resolution |
-|---|---|---|
+|----|--------|------------|
+| — | — | — |
 
-## Friction Tags
+## Friction tags
 
-Use these tags in the Friction column for easy filtering:
-- `docs-stale` — doc was wrong or missing
-- `hook-gap` — automation hook missing or broken
-- `agent-confusion` — agent made wrong decision due to missing context
-- `test-gap` — behavior not covered by any test
-- `tooling` — CLI or script gap
+Map to [HARNESS_COMPONENTS.md](HARNESS_COMPONENTS.md) responsibilities (see [FRICTION_REVIEW.md](FRICTION_REVIEW.md)):
+
+- `docs-stale` — context selection: doc wrong or missing
+- `context-bloat` — context selection: agent read too much or wrong files
+- `hook-gap` — observability: automation missing or broken
+- `proof-gap` — verification: validation unclear or missing
+- `dual-track` — task state: task file and CLI story out of sync
+- `tool-gap` — tool access: CLI or command missing
+- `perm-gap` — permissions: policy not enforced
+- `memory-gap` — project memory: decisions or traces not findable

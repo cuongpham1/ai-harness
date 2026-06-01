@@ -49,9 +49,11 @@ try {
       `Vui lòng append section sau vào mỗi task file trước khi kết thúc:\n\n` +
       `  ### After-Work — ${new Date().toISOString().slice(0, 10)}\n` +
       `  **Agent:** <role>\n` +
-      `  **Done:** <tóm tắt>\n` +
+      `  **Outcome:** completed | partial | blocked | failed\n` +
+      `  **Done:** <summary ≥10 chars>\n` +
       `  **Files changed:** <list>\n` +
-      `  **Risks/Blockers:** none\n`
+      `  **Errors:** none\n` +
+      `  **Friction:** none *(tag: docs-stale|hook-gap|proof-gap|context-bloat|dual-track — see docs/FRICTION_REVIEW.md)*\n`
     );
     process.exit(2);
     return;

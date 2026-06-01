@@ -53,7 +53,7 @@ try {
     parts.push('### 🔄 In Progress');
     inProgress.forEach(t => parts.push(`- **${t.id}**: ${t.title}  →  \`.project-manager/tasks/${t.id}.md\``));
     parts.push('');
-    parts.push('> Đọc file task để lấy AC items, scope, fixer guidance và notes trước khi bắt đầu.');
+    parts.push('> Read task file for AC, scope, fixer guidance. Token tip: `docs/TOKEN_EFFICIENCY.md`');
   }
 
   if (blocked.length > 0) {
@@ -62,11 +62,12 @@ try {
     blocked.forEach(t => parts.push(`- **${t.id}**: ${t.title}`));
   }
 
-  if (todo.length > 0) {
+  // Omit todo when in_progress exists — saves session tokens
+  if (inProgress.length === 0 && todo.length > 0) {
     parts.push('');
     parts.push('### ⬜ Todo');
-    todo.slice(0, 5).forEach(t => parts.push(`- **${t.id}**: ${t.title}`));
-    if (todo.length > 5) parts.push(`  _(+${todo.length - 5} more — xem \`.project-manager/README.md\`)_`);
+    todo.slice(0, 3).forEach(t => parts.push(`- **${t.id}**: ${t.title}`));
+    if (todo.length > 3) parts.push(`  _(+${todo.length - 3} more — \`.project-manager/README.md\`)_`);
   }
 
   if (inProgress.length === 0 && todo.length === 0 && blocked.length === 0) {

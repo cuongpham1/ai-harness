@@ -15,32 +15,6 @@
                 ]
             }
         ],
-        "SubagentStart": [
-            {
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "node scripts/hooks/hud-agent-track.mjs start"
-                    }
-                ]
-            },
-            {
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "node scripts/hooks/subagent-log.js start"
-                    }
-                ]
-            },
-            {
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "node scripts/hooks/trace-logger.mjs start"
-                    }
-                ]
-            }
-        ],
         "SubagentStop": [
             {
                 "hooks": [
@@ -68,6 +42,15 @@
             }
         ],
         "PreToolUse": [
+            {
+                "matcher": "Task",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/subagent-start-bundle.mjs"
+                    }
+                ]
+            },
             {
                 "matcher": "Bash",
                 "hooks": [
@@ -164,38 +147,26 @@
                 "hooks": [
                     {
                         "type": "command",
+                        "command": "node scripts/hooks/sync-harness-trace.mjs"
+                    }
+                ]
+            },
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/score-trace-after-sync.mjs"
+                    }
+                ]
+            },
+            {
+                "hooks": [
+                    {
+                        "type": "command",
                         "command": "node scripts/hooks/auto-checkpoint.js"
                     }
                 ]
             }
         ]
-    },
-    "mcpServers": {
-        "mobile-mcp": {
-            "command": "node",
-            "args": ["/Users/cuongpham/.nvm/versions/node/v22.19.0/lib/node_modules/@mobilenext/mobile-mcp/lib/index.js"],
-            "env": {}
-        }
-    },
-    "allowedTools": [
-        "mcp__mobile-mcp__mobile_take_screenshot",
-        "mcp__mobile-mcp__mobile_save_screenshot",
-        "mcp__mobile-mcp__mobile_click_on_screen_at_coordinates",
-        "mcp__mobile-mcp__mobile_double_tap_on_screen",
-        "mcp__mobile-mcp__mobile_long_press_on_screen_at_coordinates",
-        "mcp__mobile-mcp__mobile_swipe_on_screen",
-        "mcp__mobile-mcp__mobile_type_keys",
-        "mcp__mobile-mcp__mobile_press_button",
-        "mcp__mobile-mcp__mobile_list_elements_on_screen",
-        "mcp__mobile-mcp__mobile_list_available_devices",
-        "mcp__mobile-mcp__mobile_get_screen_size",
-        "mcp__mobile-mcp__mobile_get_orientation",
-        "mcp__mobile-mcp__mobile_launch_app",
-        "mcp__mobile-mcp__mobile_terminate_app",
-        "mcp__mobile-mcp__mobile_list_apps",
-        "mcp__mobile-mcp__mobile_open_url",
-        "mcp__mobile-mcp__mobile_list_crashes",
-        "mcp__mobile-mcp__mobile_start_screen_recording",
-        "mcp__mobile-mcp__mobile_stop_screen_recording"
-    ]
+    }
 }

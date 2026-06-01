@@ -1,0 +1,7 @@
+{
+  "id": "harness-04-friction",
+  "type": "harness",
+  "category": "harness",
+  "responsibility": "failure_attribution",
+  "description": "friction-by-component groups tags into responsibilities"
+}

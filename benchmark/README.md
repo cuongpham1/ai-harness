@@ -37,6 +37,17 @@ All fields are required except `tags`.
 
 ## How to Run
 
+**H3 harness benchmark (deterministic, no agent):**
+
+```bash
+bash benchmark/run-harness.sh
+node benchmark/compare.mjs benchmark/results/baseline-h3.jsonl benchmark/results/LATEST-harness.jsonl
+```
+
+See [PROTOCOL.md](PROTOCOL.md) for H3 metrics and responsibility attribution.
+
+**Legacy agent tasks** (requires Claude CLI — see TODO in `run.sh`):
+
 ```bash
 bash benchmark/run.sh
 ```

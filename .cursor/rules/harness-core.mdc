@@ -1,0 +1,56 @@
+---
+description: AI Harness core workflow — intake, tasks, pipeline, trace sync
+alwaysApply: true
+---
+
+# AI Harness
+
+Read before implementation work:
+
+- `docs/HARNESS.md` — task loop and unified trace model
+- `docs/FEATURE_INTAKE.md` — classify tiny / normal / high-risk
+- `docs/CONTEXT_RULES.md` — what to read per phase
+- `.project-manager/README.md` — active tasks
+
+## Code change pipeline (mandatory)
+
+Delegate via Cursor subagents (`.cursor/agents/`):
+
+```
+coder → spec-reviewer → reviewer → tester → mark task done
+```
+
+Skip full pipeline only for **tiny** lane.
+
+## Token efficiency
+
+- Prefer `bash scripts/rtk-shell.sh` / stack `rtk-*.sh` for tests and git (see `docs/TOKEN_EFFICIENCY.md`)
+- Use MCP context7/gitnexus for docs and navigation — not broad repo reads (`docs/MCP_SETUP.md`)
+- Tiny lane: coder (+ optional tester) only
+
+## Task file = source of truth
+
+Work in `.project-manager/tasks/*.md`. Append structured After-Work:
+
+```markdown
+### After-Work — YYYY-MM-DD
+**Agent:** coder
+**Outcome:** completed
+**Done:** one sentence summary (≥10 chars)
+**Files changed:** path/a, path/b
+**Errors:** none
+**Friction:** none
+```
+
+Cursor **stop** hooks sync After-Work to `harness.db` automatically.
+
+## Stack commands
+
+Read `.harness-profile` and `docs/*_STACK.md` for test/lint/run commands.
+
+## Durable layer
+
+```bash
+scripts/bin/harness-cli query matrix
+scripts/bin/harness-cli query stats
+```

@@ -1,0 +1,14 @@
+{
+  "id": "go",
+  "display": "Go",
+  "description": "Backend services and CLIs with Go",
+  "detect": ["go.mod", "main.go"],
+  "skills": ["go-test"],
+  "mcp_servers": [],
+  "agent_overrides": {},
+  "test_cmd": "go test ./...",
+  "lint_cmd": "golangci-lint run",
+  "run_cmd": "go run .",
+  "stack_doc": "docs/GO_STACK.md",
+  "token_budget_extra": 1500
+}

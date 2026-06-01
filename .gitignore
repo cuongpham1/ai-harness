@@ -1,0 +1,23 @@
+# Harness durable layer — each project instance generates its own data.
+harness.db
+harness.db-wal
+harness.db-shm
+
+# Rust build output for harness tooling.
+target/
+dist/
+
+# Downloaded Harness CLI binary for installed project instances.
+scripts/bin/harness-cli
+
+# AI Harness runtime (Claude Code sessions)
+kg/runtime/
+kg/traces/
+
+# Benchmark output
+benchmark/results/
+
+# Project manager backups
+.project-manager/tasks/*.md.bak
+
+# UAT / test artifacts — removed (use stack test commands)

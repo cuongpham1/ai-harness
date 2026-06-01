@@ -21,7 +21,7 @@ const { appendDual } = require('../utils/kg-paths');
 
 const cwd = (() => { try { return fs.realpathSync(process.cwd()); } catch { return process.cwd(); } })();
 
-const SKIP_PREFIXES = ['kg', '.project-manager', '.project-info', '.claude', 'node_modules', '.git'];
+const SKIP_PREFIXES = ['kg', '.project-manager', '.project-info', '.claude', '.cursor', 'node_modules', '.git'];
 
 function shouldSkip(relPath) {
   return SKIP_PREFIXES.some(prefix => relPath.startsWith(prefix));

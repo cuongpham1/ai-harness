@@ -1,0 +1,14 @@
+{
+  "id": "vue",
+  "display": "Vue.js (TypeScript)",
+  "description": "Vue 3 SPA with Vite or Vue CLI",
+  "detect": ["vite.config.ts", "vite.config.js", "vue.config.js"],
+  "skills": ["vue-test"],
+  "mcp_servers": [],
+  "agent_overrides": {},
+  "test_cmd": "npm test -- --run 2>/dev/null || npm test",
+  "lint_cmd": "npm run lint",
+  "run_cmd": "npm run dev",
+  "stack_doc": "docs/VUE_STACK.md",
+  "token_budget_extra": 2000
+}

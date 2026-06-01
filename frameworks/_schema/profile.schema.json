@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://harness/frameworks/profile.schema.json",
+  "title": "Framework Profile",
+  "description": "Defines a framework profile for the AI harness installer",
+  "type": "object",
+  "required": ["id", "display", "description", "detect", "skills", "test_cmd", "lint_cmd", "run_cmd", "stack_doc"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier (snake_case)",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "display": {
+      "type": "string",
+      "description": "Human-readable name shown in installer menu"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short description for installer display"
+    },
+    "detect": {
+      "type": "array",
+      "description": "File paths relative to target root used for auto-detection",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "skills": {
+      "type": "array",
+      "description": "Skill IDs (filenames without .md) to copy into .claude/skills/",
+      "items": { "type": "string" }
+    },
+    "mcp_servers": {
+      "type": "array",
+      "description": "Optional MCP servers useful for this framework",
+      "items": {
+        "type": "object",
+        "required": ["name", "install_cmd", "purpose"],
+        "properties": {
+          "name": { "type": "string" },
+          "install_cmd": { "type": "string" },
+          "purpose": { "type": "string" },
+          "required": { "type": "boolean", "default": false }
+        }
+      }
+    },
+    "agent_overrides": {
+      "type": "object",
+      "description": "Map of agent name to patch file path",
+      "additionalProperties": { "type": "string" }
+    },
+    "test_cmd": {
+      "type": "string",
+      "description": "Default test command"
+    },
+    "lint_cmd": {
+      "type": "string",
+      "description": "Default lint/analyze command"
+    },
+    "run_cmd": {
+      "type": "string",
+      "description": "Default run command"
+    },
+    "stack_doc": {
+      "type": "string",
+      "description": "Path to the stack doc relative to target root"
+    },
+    "token_budget_extra": {
+      "type": "integer",
+      "description": "Extra tokens to add to context budget for this framework",
+      "minimum": 0
+    }
+  }
+}

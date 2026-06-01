@@ -61,11 +61,64 @@ copy_if_new "scripts/utils/state-recovery.js"
 
 # New scripts
 copy_if_new "scripts/trace-viewer.mjs"
+copy_if_new "scripts/README.md"
+copy_if_new "scripts/harness-cli-release-tag"
+copy_if_new "scripts/install-harness.sh"
+copy_if_new "scripts/hooks/sync-harness-trace.mjs"
+copy_if_new "scripts/hooks/score-trace-after-sync.mjs"
+copy_if_new "scripts/hooks/cursor/stop-score-trace.mjs"
+copy_if_new "scripts/friction-by-component.mjs"
+copy_if_new "scripts/rtk-shell.sh"
+copy_if_new "scripts/rtk-node.sh"
+copy_if_new "scripts/rtk-python.sh"
+copy_if_new "docs/TOKEN_EFFICIENCY.md"
+copy_if_new "docs/MCP_SETUP.md"
+copy_if_new "scripts/verify-h3.sh"
+copy_if_new "docs/FRICTION_REVIEW.md"
+copy_if_new "scripts/merge-agents-md.sh"
+copy_if_new "templates/AGENTS.harness-block.md"
+copy_if_new "templates/AGENTS.starter.md"
+
+# Merge AGENTS.md harness block (never overwrite project content)
+if [[ -x "$HARNESS_DIR/scripts/merge-agents-md.sh" ]]; then
+  bash "$HARNESS_DIR/scripts/merge-agents-md.sh" "$HARNESS_DIR" "$TARGET"
+fi
+
+# harness-experimental docs (merge-only additions)
+for doc in \
+  docs/ARCHITECTURE.md docs/GLOSSARY.md docs/HARNESS_COMPONENTS.md \
+  docs/HARNESS_MATURITY.md docs/README.md docs/TRACE_SPEC.md docs/FRICTION_REVIEW.md \
+  docs/decisions/README.md docs/decisions/0006-hybrid-claude-code-harness.md \
+  docs/demo/README.md docs/product/README.md docs/stories/README.md \
+  docs/stories/backlog.md docs/templates/decision.md docs/templates/spec-intake.md \
+  docs/templates/story.md docs/templates/validation-report.md \
+  docs/templates/high-risk-story/design.md docs/templates/high-risk-story/execplan.md \
+  docs/templates/high-risk-story/overview.md docs/templates/high-risk-story/validation.md
+do
+  copy_if_new "$doc"
+done
+
+# Harness CLI — install if missing
+if [[ ! -x "$TARGET/scripts/bin/harness-cli" && -x "$HARNESS_DIR/scripts/bin/harness-cli" ]]; then
+  mkdir -p "$TARGET/scripts/bin"
+  cp "$HARNESS_DIR/scripts/bin/harness-cli" "$TARGET/scripts/bin/harness-cli"
+  chmod +x "$TARGET/scripts/bin/harness-cli"
+  (cd "$TARGET" && scripts/bin/harness-cli init) && echo "  + scripts/bin/harness-cli + harness.db"
+fi
 
 # Benchmark dir — copy task files and runner only if not present
 copy_if_new "benchmark/run.sh"
+copy_if_new "benchmark/run-harness.sh"
+copy_if_new "benchmark/run-harness.mjs"
+copy_if_new "benchmark/compare.mjs"
+copy_if_new "benchmark/PROTOCOL.md"
 copy_if_new "benchmark/README.md"
 copy_if_new "benchmark/tasks/sample-01.json"
+copy_if_new "benchmark/tasks/harness-01-handoff.json"
+copy_if_new "benchmark/tasks/harness-02-sync.json"
+copy_if_new "benchmark/tasks/harness-03-score.json"
+copy_if_new "benchmark/tasks/harness-04-friction.json"
+copy_if_new "benchmark/tasks/harness-05-backlog.json"
 
 # Merge settings.json — add new hooks without overwriting existing
 SETTINGS="$TARGET/.claude/settings.json"
@@ -115,6 +168,36 @@ if (!hasTraceStop) {
   process.stderr.write('  ~ SubagentStop: trace-logger already present\n');
 }
 
+// Stop — sync-harness-trace
+if (!settings.hooks.Stop) settings.hooks.Stop = [];
+const hasSyncTrace = settings.hooks.Stop.some(
+  h => JSON.stringify(h).includes('sync-harness-trace.mjs')
+);
+if (!hasSyncTrace) {
+  settings.hooks.Stop.push({
+    hooks: [{ type: 'command', command: 'node scripts/hooks/sync-harness-trace.mjs' }]
+  });
+  process.stderr.write('  + Stop: sync-harness-trace.mjs\n');
+}
+
+const hasScoreTrace = settings.hooks.Stop.some(
+  h => JSON.stringify(h).includes('score-trace-after-sync.mjs')
+);
+if (!hasScoreTrace) {
+  settings.hooks.Stop.push({
+    hooks: [{ type: 'command', command: 'node scripts/hooks/score-trace-after-sync.mjs' }]
+  });
+  process.stderr.write('  + Stop: score-trace-after-sync.mjs\n');
+}
+
+if (settings.mcpServers && settings.mcpServers['mobile-mcp']) {
+  delete settings.mcpServers['mobile-mcp'];
+  if (Array.isArray(settings.allowedTools)) {
+    settings.allowedTools = settings.allowedTools.filter(t => !String(t).includes('mobile-mcp'));
+  }
+  process.stderr.write('  - removed mobile-mcp from settings.json\n');
+}
+
 // PreToolUse — content-guard for Write and Edit
 if (!settings.hooks.PreToolUse) settings.hooks.PreToolUse = [];
 const hasGuardWrite = settings.hooks.PreToolUse.some(
@@ -157,7 +240,7 @@ GITIGNORE="$TARGET/.gitignore"
 if [[ -f "$GITIGNORE" ]]; then
   changed_gi=false
   added=0
-  for entry in "kg/traces/" "benchmark/results/"; do
+  for entry in "kg/traces/" "benchmark/results/" "harness.db" "harness.db-wal" "harness.db-shm" "scripts/bin/harness-cli"; do
     if ! grep -qF "$entry" "$GITIGNORE" 2>/dev/null; then
       if [[ $added -eq 0 ]]; then printf '\n' >> "$GITIGNORE"; fi
       echo "$entry" >> "$GITIGNORE"
@@ -174,6 +257,11 @@ fi
 # Create kg/traces dir
 mkdir -p "$TARGET/kg/traces"
 echo "  + kg/traces/ ensured"
+
+# Cursor layer refresh
+if [[ -f "$HARNESS_DIR/scripts/install-cursor-layer.sh" ]]; then
+  bash "$HARNESS_DIR/scripts/install-cursor-layer.sh" "$TARGET"
+fi
 
 echo ""
 echo "=== Upgrade complete ==="

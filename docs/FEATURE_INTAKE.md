@@ -1,6 +1,6 @@
 # Feature Intake
 
-Every implementation prompt passes this gate **before** code changes. The human does not need to pick the lane; the agent classifies and states it in the task file.
+Every implementation prompt passes this gate **before** code changes. The agent classifies work and records it in the task file header.
 
 ## Flow
 
@@ -8,98 +8,100 @@ Every implementation prompt passes this gate **before** code changes. The human 
 User prompt
   → Classify input type
   → Restate as .project-manager task
-  → Risk checklist (this project)
+  → Risk checklist
   → Lane: tiny | normal | high-risk
-  → Link TEST_MATRIX proof expectations
+  → Record: scripts/bin/harness-cli intake (normal/high-risk)
+  → Link validation expectations (TEST_MATRIX or harness-cli query matrix)
 ```
 
 ## Input types
 
 | Type | Use when | Artifact |
 |------|----------|----------|
-| Change request | Bug fix or small behavior change | Update existing `task-*.md` or new task |
-| New feature | New screen, flow, or module slice | New task + scope files |
-| Maintenance | Refactor, deps, l10n, test infra | Task or direct patch if tiny |
-| Harness improvement | Agents, docs, ai_test, hooks | `docs/*`, `.claude/*`, `scripts/ai_test/*` |
-| Native contract | Host bridge envelope or channel | Task + `README_INTEGRATION.md` + decision record |
+| Change request | Bug fix or bounded behavior change | Task file |
+| New feature | New user-visible or API behavior | Task + optional story packet |
+| Maintenance | Refactor, deps, infra, performance | Task or tiny patch |
+| Harness improvement | Agents, docs, hooks, templates | `docs/*`, `.claude/*`, backlog item |
+| New spec | First buildout from user specification | Product docs + story candidates |
 
 ## Lanes
 
 ### Tiny
 
-Docs-only, copy, typos, single-widget style, comment cleanup.
+Docs-only, copy, typos, narrow edits, dependency pin with no behavior change.
 
-**Requirements:** Patch directly; `flutter analyze` if Dart touched; no full pipeline unless user asks.
+**Requirements:** Patch directly; run stack quick check if code touched; no full pipeline unless user asks.
+
+**Pipeline:** `@coder` only (optional `@tester` if code touched). No spec-reviewer/reviewer unless user requests.
 
 ### Normal
 
-Story-sized Flutter work: one module feature, BLoC + page, tests, route.
+Story-sized work with bounded blast radius (one module, one API surface, one screen).
 
 **Requirements:**
 
-- Task file with AC from [templates/task.md](templates/task.md)
+- Task file from [templates/task.md](templates/task.md)
 - Scope files listed
-- Unit and/or widget tests for new logic
-- Integration test if user-visible flow changed (see TEST_MATRIX)
+- Tests for new logic per stack doc (`docs/*_STACK.md`)
 - Full pipeline: coder → spec-reviewer → reviewer → tester
+- `harness-cli intake` + structured After-Work (syncs to trace)
+
+**Pipeline:** `@coder` → `@spec-reviewer` → `@reviewer` → `@tester`
 
 ### High-risk
 
-Security, money movement, native bridge, auth tokens, cross-variant behavior, or weak test coverage on touched code.
+Security, auth, data loss, public contracts, payments, or multi-domain changes.
 
 **Requirements:**
 
 - Everything in **normal**, plus:
-- Human confirmation before merge if contract or auth changes
-- Decision note in `.project-manager/decisions.md` or `docs/decisions/ADR-*.md`
-- Integration test and/or AI UAT row in TEST_MATRIX must pass or waiver documented
-- Never call `MethodChannel` outside `ModuleBusChannelDataSource`
+- Story folder from [templates/high-risk-story/](templates/high-risk-story/) when scope is large
+- Human confirmation before merge if direction is ambiguous
+- Decision in `docs/decisions/`
+- Detailed After-Work + `harness-cli score-trace` evidence
 
-## Risk checklist (flutter_module_bus)
+**Pipeline:** normal pipeline + `@solution-architect` before implementation when architecture unclear
 
-Mark each flag that applies:
+## Pipeline summary
+
+| Lane | Subagents |
+|------|-----------|
+| tiny | coder (optional tester) |
+| normal | coder → spec-reviewer → reviewer → tester |
+| high-risk | + solution-architect; MCP + RTK per [TOKEN_EFFICIENCY.md](TOKEN_EFFICIENCY.md) |
+
+## Risk checklist
 
 | Flag | Applies when |
 |------|----------------|
-| **Native bridge** | `MethodChannel`, `bus.command`, `host.getInitialConfig`, host callbacks |
-| **Auth / secrets** | `standalone_secrets.dart`, JWT, env, token refresh |
-| **Public contract** | `README_INTEGRATION.md`, envelope shape, route names host depends on |
-| **Cross-variant** | `APP_VARIANT` dgo vs dstock, fonts, bundle IDs |
-| **Financial / IPO** | Registration, payment, order submit, custody accounts |
-| **Data model** | Entity/repository schema consumed by multiple features |
-| **Weak proof** | No unit test and no integration row for changed behavior |
-| **Multi-module** | DI, router, and more than one `lib/modules/*` touched |
+| **Auth** | Login, sessions, tokens, passwords |
+| **Authorization** | Roles, permissions, tenant scope |
+| **Data model** | Schema, migrations, deletion, retention |
+| **Audit/security** | PII, audit logs, encryption |
+| **External systems** | Payments, email, webhooks, third-party APIs |
+| **Public contract** | API shape, client-visible behavior |
+| **Cross-platform** | Mobile + web + native shell differences |
+| **Weak proof** | No test row for changed behavior |
+| **Multi-domain** | More than one product area touched |
 
 ## Classification
 
 ```text
 0–1 flags     → tiny or normal (by code impact)
-2–3 flags     → normal with stronger validation (integration + analyze)
+2–3 flags     → normal with stronger validation
 4+ flags      → high-risk
 Any hard gate → high-risk
 ```
 
-**Hard gates (always high-risk):**
+**Hard gates:** auth, authorization, data loss/migration, audit/security, external provider behavior, removing validation requirements.
 
-- Native bridge contract changes
-- Auth / JWT / secrets handling
-- IPO registration submit or payment
-- Removing or weakening tests listed in TEST_MATRIX
-
-## Intake output template
-
-End intake with this block (copy into task file):
+## Intake output
 
 ```text
 Lane: normal
-Reason: IPO registration form validation; touches financial flow, weak prior UAT on form fields.
-Task: .project-manager/tasks/task-00X.md
-Docs: CLAUDE.md, docs/TEST_MATRIX.md (IPO Registration Form rows)
-Validation: flutter test integration_test/... ; optional bash scripts/ai_test/run_uat_ios.sh
+Reason: touches API contract and authorization.
+Task: .project-manager/tasks/task-042.md
+Story: US-014 (optional)
+Validation: unit + integration per docs/TEST_MATRIX.md
+CLI: scripts/bin/harness-cli intake --type change_request --summary "..." --lane normal
 ```
-
-## IPO-specific notes
-
-- Standalone dev uses `STANDALONE_ENV=uat` and `lib/config/standalone_secrets.dart` — token expiry causes flaky catalog/API tests, not always app bugs.
-- `MissingPluginException` in debug overlay when standalone — **not a bug** (documented in `scripts/ai_test/explore_prompt.md`).
-- Back button on root catalog in standalone — **expected** no-op.

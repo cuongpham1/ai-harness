@@ -1,0 +1,14 @@
+{
+  "id": "java",
+  "display": "Java (Spring/Maven/Gradle)",
+  "description": "Java backend and services with Maven or Gradle",
+  "detect": ["pom.xml", "build.gradle.kts", "build.gradle"],
+  "skills": ["java-test"],
+  "mcp_servers": [],
+  "agent_overrides": {},
+  "test_cmd": "./mvnw test || mvn test || ./gradlew test",
+  "lint_cmd": "./mvnw verify -DskipTests || ./gradlew check",
+  "run_cmd": "./mvnw spring-boot:run || ./gradlew bootRun",
+  "stack_doc": "docs/JAVA_STACK.md",
+  "token_budget_extra": 2000
+}

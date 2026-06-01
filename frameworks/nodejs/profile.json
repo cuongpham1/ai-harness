@@ -1,0 +1,27 @@
+{
+  "id": "nodejs",
+  "display": "Node.js (TypeScript)",
+  "description": "Node.js backend services and APIs with TypeScript",
+  "detect": ["package.json", "tsconfig.json", "src/index.ts"],
+  "skills": ["nodejs-test"],
+  "mcp_servers": [
+    {
+      "name": "context7",
+      "install_cmd": "Add to ~/.cursor/mcp.json and ~/.claude/settings.json — see docs/MCP_SETUP.md",
+      "purpose": "Library docs on demand (saves tokens vs full doc reads)",
+      "required": false
+    },
+    {
+      "name": "gitnexus",
+      "install_cmd": "Install gitnexus CLI; add mcp server — see docs/MCP_SETUP.md",
+      "purpose": "Code graph navigation (saves tokens vs broad grep)",
+      "required": false
+    }
+  ],
+  "agent_overrides": {},
+  "test_cmd": "bash scripts/rtk-node.sh test",
+  "lint_cmd": "bash scripts/rtk-node.sh lint",
+  "run_cmd": "npm run dev",
+  "stack_doc": "docs/NODEJS_STACK.md",
+  "token_budget_extra": 1500
+}

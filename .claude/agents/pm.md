@@ -40,11 +40,8 @@ Every task with code changes MUST follow this loop. No steps may be skipped.
 │        ↓ BLOCKER found?                             │
 │        ├── YES → back to [1] @coder (fix)           │
 │        └── NO  →                                    │
-│  [4] @tester → automated tests                      │
-│        ↓                                            │
-│  [4a] @tester → mobile UI verify 📱                 │
-│        (mobile-mcp on simulator/emulator)           │
-│        ↓ critical/high bug found?                   │
+│  [4] @tester → stack tests + validation evidence            │
+│        ↓ critical/high bug found?                           │
 │        ├── YES → back to [1] @coder (fix)           │
 │        └── NO  → PM marks task DONE ✅              │
 └─────────────────────────────────────────────────────┘
@@ -54,7 +51,7 @@ Every task with code changes MUST follow this loop. No steps may be skipped.
 - Do NOT call @spec-reviewer before @coder completes
 - Do NOT call @reviewer before @spec-reviewer passes (no MISSING/EXTRA)
 - Do NOT call @tester before @reviewer approves (no BLOCKER)
-- @tester MUST run `flutter test` / integration tests per `docs/TEST_MATRIX.md`; UI tasks use **mobile-mcp** on simulator/emulator (app running)
+- @tester MUST run stack test commands from `docs/*_STACK.md` / `.harness-profile`; check `docs/TEST_MATRIX.md` or `harness-cli query matrix` for proof rows
 - If @spec-reviewer finds MISSING/EXTRA → send back to @coder → re-review
 - If @reviewer finds BLOCKER → send back to @coder → re-review
 - If @tester finds critical/high bug → send back to @coder → re-review → re-test
@@ -73,7 +70,7 @@ Every task with code changes MUST follow this loop. No steps may be skipped.
 | `@coder` | **DEFAULT** — all code changes | Code, tests |
 | `@spec-reviewer` | **MANDATORY** after @coder | Spec compliance (MISSING/EXTRA) |
 | `@reviewer` | **MANDATORY** after @spec-reviewer | Code quality review (BLOCKER/MAJOR/MINOR) |
-| `@tester` | **MANDATORY** after @reviewer | Test plan + flutter/integration + mobile-mcp UI verify, PASS/FAIL |
+| `@tester` | **MANDATORY** after @reviewer | Test plan + stack tests, PASS/FAIL |
 | `@solution-architect` | Architecture unclear or blocked | Design, trade-offs |
 | `@product-analyst` | Feature needs analysis | PRD, use cases |
 | `@planner` | Analysis ready, need work breakdown | Issues, tasks |
@@ -108,8 +105,17 @@ Every delegation prompt MUST include:
    ```
    Before returning, append to `.project-manager/tasks/{task-id}.md` under ## Notes:
    ### After-Work — {date}
-   **Agent:** <type>  **Done:** ...  **Files:** ...  **Decisions:** ...  **Risks:** ...
-   ```
+   **Agent:** <type>
+   **Outcome:** completed | partial | blocked | failed
+   **Done:** ...
+   **Files changed:** ...
+   **Errors:** none
+   **Friction:** none
+   **Decisions:** ...
+   **Risks/Blockers:** ...
+```
+
+After-Work is synced to `harness-cli trace` on session end automatically.
 
 **Task status — PM only:**
 

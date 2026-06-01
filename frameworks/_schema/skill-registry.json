@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "description": "Harness skills registry — 12 framework profiles",
+  "skills": {
+    "flutter-run": { "file": "flutter-run.md", "framework": "flutter", "description": "Launch Flutter app", "source": "bundled" },
+    "flutter-test": { "file": "flutter-test.md", "framework": "flutter", "description": "Run Flutter tests", "source": "bundled" },
+    "react-dev": { "file": "react-dev.md", "framework": "react", "description": "React dev workflow", "source": "bundled" },
+    "react-test": { "file": "react-test.md", "framework": "react", "description": "React tests (Jest/Vitest)", "source": "bundled" },
+    "nextjs-dev": { "file": "nextjs-dev.md", "framework": "nextjs", "description": "Next.js dev workflow", "source": "bundled" },
+    "vue-test": { "file": "vue-test.md", "framework": "vue", "description": "Vue/Vitest tests", "source": "bundled" },
+    "nodejs-test": { "file": "nodejs-test.md", "framework": "nodejs", "description": "Node.js tests", "source": "bundled" },
+    "python-test": { "file": "python-test.md", "framework": "python", "description": "Python pytest", "source": "bundled" },
+    "go-test": { "file": "go-test.md", "framework": "go", "description": "Go tests", "source": "bundled" },
+    "rust-test": { "file": "rust-test.md", "framework": "rust", "description": "Cargo tests", "source": "bundled" },
+    "java-test": { "file": "java-test.md", "framework": "java", "description": "Maven/Gradle tests", "source": "bundled" },
+    "csharp-test": { "file": "csharp-test.md", "framework": "csharp", "description": "dotnet test", "source": "bundled" },
+    "php-test": { "file": "php-test.md", "framework": "php", "description": "PHPUnit tests", "source": "bundled" },
+    "ruby-test": { "file": "ruby-test.md", "framework": "ruby", "description": "RSpec/Rails tests", "source": "bundled" }
+  }
+}

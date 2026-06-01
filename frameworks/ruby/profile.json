@@ -1,0 +1,14 @@
+{
+  "id": "ruby",
+  "display": "Ruby (Rails)",
+  "description": "Ruby web apps with Rails or Rack",
+  "detect": ["Gemfile", "config.ru", "Rakefile"],
+  "skills": ["ruby-test"],
+  "mcp_servers": [],
+  "agent_overrides": {},
+  "test_cmd": "bundle exec rspec 2>/dev/null || bundle exec rails test",
+  "lint_cmd": "bundle exec rubocop",
+  "run_cmd": "bundle exec rails server",
+  "stack_doc": "docs/RUBY_STACK.md",
+  "token_budget_extra": 1500
+}

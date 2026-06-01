@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "node scripts/hooks/cursor/session-start.mjs"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "node scripts/hooks/cursor/before-shell.mjs",
+        "failClosed": false
+      }
+    ],
+    "preToolUse": [
+      {
+        "matcher": "Write",
+        "command": "node scripts/hooks/cursor/pre-tool-content-guard.mjs",
+        "failClosed": true
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "node scripts/hooks/cursor/post-tool-use.mjs"
+      }
+    ],
+    "subagentStart": [
+      {
+        "command": "node scripts/hooks/cursor/subagent-telemetry.mjs start"
+      }
+    ],
+    "subagentStop": [
+      {
+        "command": "node scripts/hooks/cursor/subagent-telemetry.mjs stop"
+      }
+    ],
+    "stop": [
+      {
+        "command": "node scripts/hooks/cursor/stop-handoff.mjs",
+        "loop_limit": 3
+      },
+      {
+        "command": "node scripts/hooks/cursor/stop-sync-trace.mjs"
+      },
+      {
+        "command": "node scripts/hooks/cursor/stop-score-trace.mjs"
+      },
+      {
+        "command": "node scripts/hooks/cursor/stop-checkpoint.mjs"
+      }
+    ]
+  }
+}

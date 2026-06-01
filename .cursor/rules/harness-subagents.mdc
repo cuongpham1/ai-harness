@@ -1,0 +1,23 @@
+---
+description: When to delegate to harness subagents (pm, coder, reviewer, tester)
+alwaysApply: true
+---
+
+# Harness subagents
+
+Use **Task tool** with these project subagents from `.cursor/agents/`:
+
+| Subagent | When |
+|----------|------|
+| `pm` | Orchestrate work; never implement code directly |
+| `coder` | All code changes |
+| `spec-reviewer` | After coder — AC compliance |
+| `reviewer` | After spec-reviewer passes — code quality |
+| `tester` | After reviewer — run stack tests, QA report |
+| `debugger` | Stuck after 2+ coder attempts |
+| `explorer` | Map codebase before large changes |
+| `solution-architect` | Architecture unclear or high-risk design |
+
+Example: *"Use the coder subagent to implement task-042 per `.project-manager/tasks/task-042.md`"*
+
+After subagent completes, PM updates task status and ensures After-Work is appended.

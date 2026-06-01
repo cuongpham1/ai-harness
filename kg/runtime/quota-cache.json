@@ -1,13 +1,13 @@
 {
-  "timestamp": 1780122960206,
+  "timestamp": 1780301247545,
   "data": {
     "five_hour": {
-      "utilization": 42,
-      "resets_at": "2026-05-30T09:50:00.078228+00:00"
+      "utilization": 100,
+      "resets_at": "2026-06-01T09:40:00.988559+00:00"
     },
     "seven_day": {
-      "utilization": 30,
-      "resets_at": "2026-06-04T12:00:01.078248+00:00"
+      "utilization": 50,
+      "resets_at": "2026-06-04T12:00:00.988583+00:00"
     },
     "seven_day_oauth_apps": null,
     "seven_day_opus": null,

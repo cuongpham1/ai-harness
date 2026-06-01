@@ -1,0 +1,7 @@
+{
+  "id": "harness-03-score",
+  "type": "harness",
+  "category": "harness",
+  "responsibility": "observability",
+  "description": "score-trace meets lane tier requirement"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "flutter",
+  "display": "Flutter (Dart)",
+  "description": "Cross-platform mobile, web, and desktop with Flutter",
+  "detect": ["pubspec.yaml", "lib/main.dart"],
+  "skills": ["flutter-run", "flutter-test"],
+  "mcp_servers": [],
+  "agent_overrides": {},
+  "test_cmd": "flutter test",
+  "lint_cmd": "flutter analyze",
+  "run_cmd": "flutter run",
+  "stack_doc": "docs/FLUTTER_STACK.md",
+  "token_budget_extra": 3000
+}

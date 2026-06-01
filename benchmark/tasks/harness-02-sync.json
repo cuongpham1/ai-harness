@@ -1,0 +1,7 @@
+{
+  "id": "harness-02-sync",
+  "type": "harness",
+  "category": "harness",
+  "responsibility": "task_state",
+  "description": "After-Work syncs to harness.db via sync-harness-trace"
+}

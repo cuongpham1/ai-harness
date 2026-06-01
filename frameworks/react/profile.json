@@ -1,0 +1,27 @@
+{
+  "id": "react",
+  "display": "React (TypeScript)",
+  "description": "Web SPAs and component libraries with React & TypeScript",
+  "detect": ["package.json", "src/App.tsx", "src/App.jsx"],
+  "skills": ["react-dev", "react-test"],
+  "mcp_servers": [
+    {
+      "name": "context7",
+      "install_cmd": "See docs/MCP_SETUP.md",
+      "purpose": "React/npm library docs on demand",
+      "required": false
+    },
+    {
+      "name": "gitnexus",
+      "install_cmd": "See docs/MCP_SETUP.md",
+      "purpose": "Component and module navigation",
+      "required": false
+    }
+  ],
+  "agent_overrides": {},
+  "test_cmd": "bash scripts/rtk-node.sh test -- --watchAll=false",
+  "lint_cmd": "bash scripts/rtk-node.sh lint",
+  "run_cmd": "npm start",
+  "stack_doc": "docs/REACT_STACK.md",
+  "token_budget_extra": 2000
+}

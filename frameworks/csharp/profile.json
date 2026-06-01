@@ -1,0 +1,14 @@
+{
+  "id": "csharp",
+  "display": "C# (.NET)",
+  "description": "ASP.NET Core and .NET applications",
+  "detect": ["Program.cs", "global.json", "Directory.Build.props"],
+  "skills": ["csharp-test"],
+  "mcp_servers": [],
+  "agent_overrides": {},
+  "test_cmd": "dotnet test",
+  "lint_cmd": "dotnet build --no-restore",
+  "run_cmd": "dotnet run",
+  "stack_doc": "docs/CSHARP_STACK.md",
+  "token_budget_extra": 2000
+}

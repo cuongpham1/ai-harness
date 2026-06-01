@@ -1,0 +1,14 @@
+{
+  "id": "rust",
+  "display": "Rust",
+  "description": "Systems programming and CLI tools with Rust",
+  "detect": ["Cargo.toml", "src/main.rs", "src/lib.rs"],
+  "skills": ["rust-test"],
+  "mcp_servers": [],
+  "agent_overrides": {},
+  "test_cmd": "cargo test",
+  "lint_cmd": "cargo clippy -- -D warnings",
+  "run_cmd": "cargo run",
+  "stack_doc": "docs/RUST_STACK.md",
+  "token_budget_extra": 2000
+}

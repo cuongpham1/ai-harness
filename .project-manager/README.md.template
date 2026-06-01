@@ -1,71 +1,54 @@
 # Project Manager
 
-## Harness docs (read first for new work)
+## Harness docs
 
 | Doc | Purpose |
 |-----|---------|
 | [docs/HARNESS.md](../docs/HARNESS.md) | Agent ↔ human workflow |
-| [docs/FEATURE_INTAKE.md](../docs/FEATURE_INTAKE.md) | tiny / normal / high-risk lanes |
-| [docs/TEST_MATRIX.md](../docs/TEST_MATRIX.md) | Behavior → proof commands |
-| [docs/templates/task.md](../docs/templates/task.md) | Task file header template |
-| [AGENTS.md](../AGENTS.md) | Entry for Cursor / Codex / Claude |
+| [docs/FEATURE_INTAKE.md](../docs/FEATURE_INTAKE.md) | tiny / normal / high-risk |
+| [docs/TEST_MATRIX.md](../docs/TEST_MATRIX.md) | Behavior → proof |
+| [docs/templates/task.md](../docs/templates/task.md) | Task template |
+| [AGENTS.md](../AGENTS.md) | Agent entrypoint |
 
-## Project Overview
-Flutter add-to-app scaffold demonstrating Clean Architecture + BLoC pattern for the VNDirect superapp. Reference implementation for teams adding new modules.
+## Project
 
-**Version:** 1.0.0+1
-**Stack:** Dart 3.9.2+, Flutter, flutter_bloc 9.1.0, go_router 17.0.0, GetIt 7.6.0
+**Name:** PROJECT_NAME_PLACEHOLDER
 
-## Team
-Small team (2–5). PRs reviewed before merge. No formal branching strategy.
+**Stack:** See `.harness-profile` and `docs/*_STACK.md`.
 
-## Architecture
-- Layer: domain → data → presentation
-- DI: GetIt with lazy singleton + factory pattern
-- State: BLoC via BaseCubit (base_bloc_module)
-- Routing: GoRouter with per-module static route lists
-- Bridge: MethodChannel → datasource → repository → usecase (never call from UI/BLoC)
-
-## Local Dependencies
-- `base_bloc_module` — private GitLab (BaseCubit, BaseViewCubitState, BlocBuilderDataState)
-- `done_ui_component` — local path `/Users/cuongpham/ipa_done/done_ui_component`
-
-## Commands
-```bash
-flutter pub get
-flutter analyze
-flutter test
-flutter run
-```
-
-## Agent Pipeline
+## Agent pipeline
 
 Classify intake → create/update task → then:
 
-`coder → spec-reviewer → reviewer → tester → PM marks done`
+`@coder → @spec-reviewer → @reviewer → @tester → PM marks done`
 
-Skip full pipeline only for **tiny** lane (see FEATURE_INTAKE.md).
+Skip full pipeline only for **tiny** lane.
 
-**Agent models:** pm / coder / spec-reviewer / reviewer / tester / planner / product-analyst → `sonnet`; debugger / solution-architect → `opus`; explorer / doc-writer → `haiku`. UI verify: **mobile-mcp** (not agent-browser).
+## Commands
 
-## Known Issues / Backlog
-- [ ] Stream subscription leak in ModuleBusBloc (missing close() cancel)
-- [ ] No typed error handling (generic catch → sealed class per module)
-- [ ] L10n uses custom Map delegate (migrate to flutter gen-l10n)
-- [ ] Only 1 widget test (add unit tests for usecases + BLoC)
-- [ ] AI UAT (2026-05-29): IPO registration form fields/buttons may not respond to taps — see `ai_test_results/uat_mobile_mcp_20260529_103736/report.md`, TEST_MATRIX registration rows
+Check framework stack doc for `test_cmd`, `lint_cmd`, `run_cmd`.
+
+```bash
+scripts/bin/harness-cli query matrix
+scripts/bin/harness-cli query stats
+```
 
 ## Tasks
+
 See `.project-manager/tasks/`
 
 ## Active Tasks
 
 | ID | Title | Status | Priority |
 |----|-------|--------|----------|
-| [task-001](tasks/task-001.md) | task-001.md | ⬜ todo | high |
-| [task-002](tasks/task-002.md) | task-002.md | ⬜ todo | high |
-| [task-003](tasks/task-003.md) | task-003.md | ⬜ todo | medium |
+| — | — | — | — |
 
 ## Completed Tasks
 
-- [ai-explorer-001](tasks/ai-explorer-001.md): ai-explorer-001.md
+| ID | Title | Closed |
+|----|-------|--------|
+| — | — | — |
+
+## Known issues / backlog
+
+- [ ] (none yet)

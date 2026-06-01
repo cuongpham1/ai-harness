@@ -1,0 +1,7 @@
+{
+  "id": "harness-05-backlog",
+  "type": "harness",
+  "category": "harness",
+  "responsibility": "entropy_auditing",
+  "description": "backlog add/close with predicted impact and actual outcome"
+}
