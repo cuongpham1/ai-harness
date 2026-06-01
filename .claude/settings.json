@@ -1,0 +1,201 @@
+{
+    "agent": "pm",
+    "statusLine": {
+        "type": "command",
+        "command": "node scripts/hud/index.mjs"
+    },
+    "hooks": {
+        "SessionStart": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/session-start-pm.js"
+                    }
+                ]
+            }
+        ],
+        "SubagentStart": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/hud-agent-track.mjs start"
+                    }
+                ]
+            },
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/subagent-log.js start"
+                    }
+                ]
+            },
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/trace-logger.mjs start"
+                    }
+                ]
+            }
+        ],
+        "SubagentStop": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/hud-agent-track.mjs stop"
+                    }
+                ]
+            },
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/subagent-log.js stop"
+                    }
+                ]
+            },
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/trace-logger.mjs stop"
+                    }
+                ]
+            }
+        ],
+        "PreToolUse": [
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/block-dangerous-bash.js"
+                    }
+                ]
+            },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/guard-commit.js"
+                    }
+                ]
+            },
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/suggest-compact.js"
+                    }
+                ]
+            },
+            {
+                "matcher": "Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/content-guard.mjs"
+                    }
+                ]
+            },
+            {
+                "matcher": "Edit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/content-guard.mjs"
+                    }
+                ]
+            }
+        ],
+        "PostToolUse": [
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/post-commit-archaeologist.js"
+                    }
+                ]
+            },
+            {
+                "matcher": "Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/update-pm-readme.js"
+                    }
+                ]
+            },
+            {
+                "matcher": "Edit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/post-tool-task-tracker.js"
+                    }
+                ]
+            },
+            {
+                "matcher": "Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/post-tool-task-tracker.js"
+                    }
+                ]
+            }
+        ],
+        "Stop": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/check-task-handoff.js"
+                    }
+                ]
+            },
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/auto-checkpoint.js"
+                    }
+                ]
+            }
+        ]
+    },
+    "mcpServers": {
+        "mobile-mcp": {
+            "command": "node",
+            "args": ["/Users/cuongpham/.nvm/versions/node/v22.19.0/lib/node_modules/@mobilenext/mobile-mcp/lib/index.js"],
+            "env": {}
+        }
+    },
+    "allowedTools": [
+        "mcp__mobile-mcp__mobile_take_screenshot",
+        "mcp__mobile-mcp__mobile_save_screenshot",
+        "mcp__mobile-mcp__mobile_click_on_screen_at_coordinates",
+        "mcp__mobile-mcp__mobile_double_tap_on_screen",
+        "mcp__mobile-mcp__mobile_long_press_on_screen_at_coordinates",
+        "mcp__mobile-mcp__mobile_swipe_on_screen",
+        "mcp__mobile-mcp__mobile_type_keys",
+        "mcp__mobile-mcp__mobile_press_button",
+        "mcp__mobile-mcp__mobile_list_elements_on_screen",
+        "mcp__mobile-mcp__mobile_list_available_devices",
+        "mcp__mobile-mcp__mobile_get_screen_size",
+        "mcp__mobile-mcp__mobile_get_orientation",
+        "mcp__mobile-mcp__mobile_launch_app",
+        "mcp__mobile-mcp__mobile_terminate_app",
+        "mcp__mobile-mcp__mobile_list_apps",
+        "mcp__mobile-mcp__mobile_open_url",
+        "mcp__mobile-mcp__mobile_list_crashes",
+        "mcp__mobile-mcp__mobile_start_screen_recording",
+        "mcp__mobile-mcp__mobile_stop_screen_recording"
+    ]
+}

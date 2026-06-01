@@ -1,0 +1,12 @@
+{
+  "id": "sample-01",
+  "category": "code-generation",
+  "difficulty": "easy",
+  "prompt": "Create a simple Node.js function that adds two numbers and returns the result. Save to /tmp/benchmark-test/add.js",
+  "expected": {
+    "files_created": ["/tmp/benchmark-test/add.js"],
+    "content_contains": ["function", "return", "+"]
+  },
+  "timeout_seconds": 60,
+  "tags": ["node", "function", "basic"]
+}

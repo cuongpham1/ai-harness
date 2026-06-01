@@ -1,0 +1,21 @@
+{
+  "context_window": { "used_percentage": 45.2 },
+  "model": "claude-3-sonnet",
+  "git": { "branch": "main", "status": "clean" },
+  "task": "Implement HUD enhancements",
+  "usage_limits": {
+    "session": {
+      "current_usage_percentage": 3,
+      "reset_at": "2026-04-14T15:30:00.000Z"
+    },
+    "weekly": {
+      "all_models": {
+        "current_usage_percentage": 15
+      },
+      "sonnet_only": {
+        "current_usage_percentage": 21
+      }
+    }
+  },
+  "cwd": "/Users/user/workspace/project"
+}

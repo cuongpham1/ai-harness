@@ -1,0 +1,20 @@
+{
+  "sessionStartTime": null,
+  "lastUpdated": "2026-05-29T07:06:09.551Z",
+  "quota": {
+    "sessionUsed": null,
+    "weeklyUsed": null,
+    "weeklySonnetUsed": null,
+    "resetAt": null,
+    "resetInHours": null,
+    "resetInMinutes": null
+  },
+  "agents": {
+    "spawned": 15,
+    "running": 0,
+    "completed": 23,
+    "types": [
+      "unknown"
+    ]
+  }
+}
