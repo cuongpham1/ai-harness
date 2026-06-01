@@ -9,9 +9,11 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 const cwd = (() => { try { return fs.realpathSync(process.cwd()); } catch { return process.cwd(); } })();
 const PM_DIR = path.join(cwd, '.project-manager');
+const cliPath = path.join(cwd, 'scripts', 'bin', 'harness-cli');
 
 function readFileSafe(p) {
   try { return fs.readFileSync(p, 'utf8').trim(); } catch { return null; }
@@ -19,7 +21,7 @@ function readFileSafe(p) {
 
 function getTasksByStatus() {
   const tasksDir = path.join(PM_DIR, 'tasks');
-  if (!fs.existsSync(tasksDir)) return { inProgress: [], todo: [], blocked: [] };
+  if (!fs.existsSync(tasksDir)) return { inProgress: [], todo: [], blocked: [], discipline: [] };
 
   const inProgress = [], todo = [], blocked = [];
   const files = fs.readdirSync(tasksDir).filter(f => f.endsWith('.md')).sort();
@@ -47,14 +49,14 @@ function getTasksByStatus() {
     else if (status === 'blocked') blocked.push(entry);
     else if (status === 'todo') todo.push(entry);
   }
-  return { inProgress, todo, blocked };
+  return { inProgress, todo, blocked, discipline };
 }
 
 try {
   const pmExists = fs.existsSync(PM_DIR);
   if (!pmExists) { process.exit(0); }
 
-  const { inProgress, todo, blocked } = getTasksByStatus();
+  const { inProgress, todo, blocked, discipline } = getTasksByStatus();
   const parts = [];
 
   parts.push('## .project-manager State');
@@ -92,6 +94,22 @@ try {
     parts.push(`Tasks with \`Outcome: completed\` but Status not \`done\`: **${discipline.join(', ')}**.`);
     parts.push('Run `bash scripts/verify-story.sh --task <id>`; on pass set `Status: done` and tick AC.');
   }
+
+  // Show open backlog count
+  try {
+    if (fs.existsSync(cliPath)) {
+      const backlogRaw = execFileSync(cliPath, ['query', 'backlog'], {
+        cwd, encoding: 'utf8', timeout: 8000,
+      });
+      const openItems = backlogRaw.trim().split('\n')
+        .filter(l => l.trim() && !l.startsWith('id') && !l.startsWith('--'));
+      if (openItems.length > 0) {
+        parts.push('');
+        parts.push(`### Backlog: ${openItems.length} open item(s)`);
+        parts.push('Run: `scripts/bin/harness-cli query backlog`');
+      }
+    }
+  } catch { /* ignore */ }
 
   process.stdout.write(JSON.stringify({
     hookSpecificOutput: {
