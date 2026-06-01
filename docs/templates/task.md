@@ -5,8 +5,12 @@
 **Priority:** high | medium | low
 **Lane:** tiny | normal | high-risk *(required for normal/high-risk)*
 
+**Status vs After-Work:** `Outcome: completed` = coder finished; set `Status: done` only after `bash scripts/verify-story.sh` passes (proof in `kg/runtime/verify-last.json`). Tick AC when verified. For monorepos, optional scoped checks: `**Verify lint:**` / `**Verify test:**` (override framework profile).
+
 For **normal** and **high-risk** lanes, `**Friction:**` must use a tag from [FRICTION_REVIEW.md](../FRICTION_REVIEW.md), e.g. `hook-gap: description` or `none`.
 **Story ID:** US-XXX (optional)
+**Verify lint:** *(optional — e.g. `dart analyze lib/feature`)*
+**Verify test:** *(optional — e.g. `flutter test test/feature`)*
 **Risk flags:** (e.g. auth, data_model, public_contract)
 **Created:** YYYY-MM-DD
 

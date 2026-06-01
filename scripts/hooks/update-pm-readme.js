@@ -9,6 +9,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 const cwd = (() => { try { return fs.realpathSync(process.cwd()); } catch { return process.cwd(); } })();
 const PM_DIR = path.join(cwd, '.project-manager');
@@ -37,7 +38,7 @@ function buildActiveTasksSection(pmDir) {
       status,
       priority: priorityMatch?.[1] || '-'
     };
-    if (status === 'done') done.push(entry);
+    if (status === 'done' || status === 'completed') done.push(entry);
     else active.push(entry);
   }
 
@@ -62,6 +63,54 @@ function buildActiveTasksSection(pmDir) {
   }
 
   return { section, activeCount: active.length, doneCount: done.length };
+}
+
+function buildBacklogSection(root) {
+  const cli = path.join(root, 'scripts', 'bin', 'harness-cli');
+  let lines = [
+    'Product issues: add bullets here.',
+    '',
+    'Harness/infra backlog (`harness.db`, benchmark/hooks — not product tasks):',
+    '',
+    '```bash',
+    'scripts/bin/harness-cli query backlog',
+    '```',
+    '',
+  ];
+  if (!fs.existsSync(cli)) {
+    lines.push('- [ ] (harness-cli not installed)');
+    return lines.join('\n');
+  }
+  try {
+    const out = execFileSync(cli, ['query', 'backlog'], {
+      cwd: root,
+      encoding: 'utf8',
+      timeout: 10000,
+    });
+    const rows = out
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l && !/^id\s+title/i.test(l) && !/^--/.test(l));
+    const open = rows.filter((l) => !/\bimplemented\b/i.test(l)).slice(0, 6);
+    if (open.length === 0) {
+      lines.push(`- [ ] (${rows.length} harness backlog row(s) in DB — all implemented; see CLI for history)`);
+    } else {
+      open.forEach((r) => lines.push(`- [ ] \`${r}\` _(harness DB)_`));
+    }
+  } catch {
+    lines.push('- [ ] (run `scripts/bin/harness-cli query backlog`)');
+  }
+  return lines.join('\n');
+}
+
+function replaceSection(readme, heading, body) {
+  const marker = `\n## ${heading}`;
+  const start = readme.indexOf(marker);
+  if (start === -1) return readme + `\n\n## ${heading}\n\n${body}\n`;
+  const after = readme.slice(start + 1);
+  const next = after.search(/\n## /);
+  const end = next === -1 ? readme.length : start + 1 + next;
+  return readme.slice(0, start + 1) + `\n## ${heading}\n\n${body}\n` + readme.slice(end);
 }
 
 let input = '';
@@ -98,6 +147,8 @@ process.stdin.on('end', () => {
     } else {
       readme = readme + '\n\n' + result.section;
     }
+
+    readme = replaceSection(readme, 'Known issues / backlog', buildBacklogSection(cwd));
 
     fs.writeFileSync(readmePath, readme.trimEnd() + '\n');
     process.stderr.write(`[update-pm-readme] README.md updated — ${result.activeCount} active, ${result.doneCount} done\n`);

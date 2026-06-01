@@ -6,9 +6,9 @@
 import fs from 'fs';
 import path from 'path';
 
-const root = process.cwd();
-const target = path.resolve(process.argv[2] || root);
-const srcDir = path.join(root, '.claude/agents');
+const target = path.resolve(process.argv[2] || process.cwd());
+// Always sync from the *target* project's .claude/agents (not installer's cwd).
+const srcDir = path.join(target, '.claude/agents');
 const dstDir = path.join(target, '.cursor/agents');
 
 if (!fs.existsSync(srcDir)) {

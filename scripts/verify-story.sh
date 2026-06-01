@@ -29,16 +29,25 @@ done
 REPORT="$ROOT/kg/runtime/verify-last.json"
 mkdir -p "$(dirname "$REPORT")"
 
+write_report() {
+  local payload="$1"
+  local tid="$2"
+  printf '%s\n' "$payload" >"$REPORT"
+  if [[ -n "$tid" ]]; then
+    printf '%s\n' "$payload" >"$ROOT/kg/runtime/verify-${tid}.json"
+  fi
+}
+
 json_escape() {
-  python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))' <<<"$1"
+  python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1"
 }
 
 fail_report() {
   local msg="$1"
   local code="${2:-1}"
   local tid="${3:-}"
-  printf '{"ok":false,"proof":false,"task":%s,"message":%s,"at":"%s"}\n' \
-    "$(json_escape "${tid}")" "$(json_escape "$msg")" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$REPORT"
+  write_report "$(printf '{"ok":false,"proof":false,"task":%s,"message":%s,"at":"%s"}' \
+    "$(json_escape "${tid}")" "$(json_escape "$msg")" "$(date -u +%Y-%m-%dT%H:%M:%SZ)")" "$tid"
   echo "verify-story: $msg" >&2
   exit "$code"
 }
@@ -80,7 +89,7 @@ PY
 TASK_FILE="$(pick_task || true)"
 if [[ -z "$TASK_FILE" ]]; then
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    printf '{"ok":true,"proof":false,"skipped":"no_tasks","dry_run":true}\n' >"$REPORT"
+    write_report '{"ok":true,"proof":false,"skipped":"no_tasks","dry_run":true}' ""
     echo "verify-story: dry-run OK (no tasks)"
     exit 0
   fi
@@ -124,6 +133,21 @@ m = re.search(r'\*\*Outcome:\*\*\s*(\S+)', body, re.I)
 print(m.group(1).lower() if m else '')
 " "$TASK_FILE")"
 
+# Optional per-task overrides (monorepos / scoped modules)
+VERIFY_LINT="$(python3 -c "
+import re, sys
+t = open(sys.argv[1]).read()
+m = re.search(r'\*\*Verify lint:\*\*\s*(.+?)(?=\n|$)', t, re.I)
+print(m.group(1).strip() if m else '')
+" "$TASK_FILE")"
+
+VERIFY_TEST="$(python3 -c "
+import re, sys
+t = open(sys.argv[1]).read()
+m = re.search(r'\*\*Verify test:\*\*\s*(.+?)(?=\n|$)', t, re.I)
+print(m.group(1).strip() if m else '')
+" "$TASK_FILE")"
+
 FRAMEWORK=""
 if [[ -f "$ROOT/.harness-profile" ]]; then
   FRAMEWORK="$(tr -d '[:space:]' <"$ROOT/.harness-profile")"
@@ -148,6 +172,8 @@ if [[ -n "$PROFILE_JSON" ]]; then
   LINT_CMD="$(read_profile_cmd lint_cmd)"
   TEST_CMD="$(read_profile_cmd test_cmd)"
 fi
+[[ -n "$VERIFY_LINT" ]] && LINT_CMD="$VERIFY_LINT"
+[[ -n "$VERIFY_TEST" ]] && TEST_CMD="$VERIFY_TEST"
 
 # Installer repo without .harness-profile: use local Rust when Cargo.toml present
 if [[ -z "$TEST_CMD" && -f "$ROOT/Cargo.toml" ]]; then
@@ -158,22 +184,24 @@ fi
 echo "=== verify-story ($TASK_ID, lane=$LANE) ==="
 
 if [[ "$LANE" == "tiny" ]]; then
-  printf '{"ok":true,"proof":true,"lane":"tiny","task":%s,"skipped_stack":true,"evidence":"lane:tiny"}\n' "$(json_escape "$TASK_ID")" >"$REPORT"
+  write_report "$(printf '{"ok":true,"proof":true,"lane":"tiny","task":%s,"skipped_stack":true,"evidence":"lane:tiny"}' \
+    "$(json_escape "$TASK_ID")")" "$TASK_ID"
   echo "  tiny lane — stack checks skipped"
   exit 0
 fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
-  printf '{"ok":true,"proof":false,"dry_run":true,"task":%s,"lane":%s,"lint":%s,"test":%s}\n' \
+  write_report "$(printf '{"ok":true,"proof":false,"dry_run":true,"task":%s,"lane":%s,"lint":%s,"test":%s}' \
     "$(json_escape "$TASK_ID")" "$(json_escape "$LANE")" \
-    "$(json_escape "$LINT_CMD")" "$(json_escape "$TEST_CMD")" >"$REPORT"
+    "$(json_escape "$LINT_CMD")" "$(json_escape "$TEST_CMD")")" "$TASK_ID"
   echo "  dry-run OK (lane=$LANE lint=${LINT_CMD:-none} test=${TEST_CMD:-none})"
   exit 0
 fi
 
 # Only run heavy checks when After-Work Outcome is explicitly completed
 if [[ "$OUTCOME" != "completed" ]]; then
-  printf '{"ok":false,"proof":false,"skipped":"outcome_%s","task":%s}\n' "${OUTCOME:-missing}" "$(json_escape "$TASK_ID")" >"$REPORT"
+  write_report "$(printf '{"ok":false,"proof":false,"skipped":"outcome_%s","task":%s}' \
+    "${OUTCOME:-missing}" "$(json_escape "$TASK_ID")")" "$TASK_ID"
   echo "  outcome=${OUTCOME:-<missing>} — stack checks skipped (need Outcome: completed)"
   exit 0
 fi
@@ -225,22 +253,25 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 if [[ "$FAILED" -eq 0 ]]; then
   if [[ -n "$STORY_ID" && -x "$ROOT/scripts/bin/harness-cli" ]]; then
-    (cd "$ROOT" && scripts/bin/harness-cli story update \
-      --id "$STORY_ID" \
-      --status implemented \
-      --unit true \
-      --evidence "verify-story $TS ($EVIDENCE_STR)") 2>/dev/null \
+    STORY_ARGS=(story update --id "$STORY_ID" --status implemented --evidence "verify-story $TS ($EVIDENCE_STR)")
+    if [[ "$EVIDENCE_STR" == *"lint:pass"* ]]; then
+      STORY_ARGS+=(--unit 1)
+    fi
+    if [[ "$EVIDENCE_STR" == *"test:pass"* ]]; then
+      STORY_ARGS+=(--integration 1)
+    fi
+    (cd "$ROOT" && scripts/bin/harness-cli "${STORY_ARGS[@]}") 2>/dev/null \
       || echo "  ⚠ story update skipped ($STORY_ID not in DB — run story add or import)" >&2
   fi
-  printf '{"ok":true,"proof":true,"task":%s,"lane":%s,"evidence":%s,"at":%s}\n' \
+  write_report "$(printf '{"ok":true,"proof":true,"task":%s,"lane":%s,"evidence":%s,"at":%s}' \
     "$(json_escape "$TASK_ID")" "$(json_escape "$LANE")" \
-    "$(json_escape "$EVIDENCE_STR")" "$(json_escape "$TS")" >"$REPORT"
+    "$(json_escape "$EVIDENCE_STR")" "$(json_escape "$TS")")" "$TASK_ID"
   echo "=== verify-story PASSED ==="
   exit 0
 fi
 
-printf '{"ok":false,"proof":false,"task":%s,"lane":%s,"evidence":%s,"at":%s}\n' \
+write_report "$(printf '{"ok":false,"proof":false,"task":%s,"lane":%s,"evidence":%s,"at":%s}' \
   "$(json_escape "$TASK_ID")" "$(json_escape "$LANE")" \
-  "$(json_escape "$EVIDENCE_STR")" "$(json_escape "$TS")" >"$REPORT"
+  "$(json_escape "$EVIDENCE_STR")" "$(json_escape "$TS")")" "$TASK_ID"
 echo "=== verify-story FAILED ===" >&2
 exit $((BLOCK ? 2 : 1))

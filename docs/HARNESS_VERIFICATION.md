@@ -35,7 +35,7 @@ Use `--unit 1` / `--integration 1` on `story update` (numeric flags, not `yes`/`
 | Lane | Stack lint/test | Story DB update |
 |------|-----------------|-----------------|
 | tiny | Skipped | Sync only (Stop hook) |
-| normal | Only when `Outcome: completed` (missing/other → skip) | `--unit true` when checks pass |
+| normal | Only when `Outcome: completed` (missing/other → skip) | `--unit 1` / `--integration 1` when lint/test pass; optional per-task `**Verify lint:**` / `**Verify test:**` for monorepos |
 | high-risk | Same + `decision verify` batch | Same |
 
 ## Stop hook chain

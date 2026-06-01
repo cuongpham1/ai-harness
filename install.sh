@@ -374,6 +374,45 @@ copy_file() {
   fi
 }
 
+# Upgrade: replace policy docs that still say CLI/DB are "optional later"
+refresh_stale_policy_docs() {
+  local rel src dst
+  for rel in docs/HARNESS.md docs/HARNESS_MATURITY.md; do
+    src="$HARNESS_DIR/$rel"
+    dst="$TARGET/$rel"
+    [[ -f "$src" ]] || continue
+    if [[ ! -f "$dst" ]] \
+      || grep -qE 'optional later|What we did not install from harness' "$dst" 2>/dev/null; then
+      mkdir -p "$(dirname "$dst")"
+      cp "$src" "$dst"
+      echo "  ✓ $rel (refreshed — outdated harness policy)"
+    fi
+  done
+}
+
+# Upgrade: always refresh hook/verify scripts (behavior fixes without overwriting whole tree)
+refresh_critical_scripts() {
+  local rel src dst
+  for rel in \
+    scripts/verify-story.sh \
+    scripts/verify-h4.sh \
+    scripts/check-agent-parity.mjs \
+    scripts/sync-cursor-agents.mjs \
+    scripts/hooks/sync-harness-story.mjs \
+    scripts/hooks/lib-harness-task.mjs \
+    scripts/hooks/update-pm-readme.js \
+    scripts/hooks/session-start-pm.js \
+    scripts/hooks/run-harness-verify.mjs; do
+    src="$HARNESS_DIR/$rel"
+    dst="$TARGET/$rel"
+    [[ -f "$src" ]] || continue
+    mkdir -p "$(dirname "$dst")"
+    cp "$src" "$dst"
+    [[ "$rel" == *.sh ]] && chmod +x "$dst"
+    echo "  ✓ $rel (refresh)"
+  done
+}
+
 copy_dir ".claude/agents"
 copy_file ".claude/settings.json"
 copy_dir "scripts/hooks"
@@ -410,6 +449,11 @@ chmod +x "$TARGET/scripts/install-harness.sh" 2>/dev/null || true
 
 # AGENTS.md — merge harness block, never blind overwrite
 bash "$HARNESS_DIR/scripts/merge-agents-md.sh" "$HARNESS_DIR" "$TARGET"
+
+if [[ "$UPGRADE_MODE" == "true" ]]; then
+  refresh_stale_policy_docs
+  refresh_critical_scripts
+fi
 
 # Harness CLI (durable layer)
 sha256_file() {
@@ -508,6 +552,18 @@ install_framework "$FRAMEWORK" "$TARGET" "$HARNESS_DIR"
 echo ""
 echo "Installing Cursor layer..."
 bash "$HARNESS_DIR/scripts/install-cursor-layer.sh" "$TARGET"
+
+echo ""
+echo "Agent parity (.claude ↔ .cursor)..."
+if ! (cd "$TARGET" && node scripts/check-agent-parity.mjs); then
+  echo "  ⚠ Drift detected — re-syncing .cursor from target .claude/agents"
+  node "$HARNESS_DIR/scripts/sync-cursor-agents.mjs" "$TARGET"
+  (cd "$TARGET" && node scripts/check-agent-parity.mjs) \
+    && echo "  ✓ Agent parity OK after sync" \
+    || echo "  ⚠ Agent parity still failing — review .claude vs .cursor manually"
+else
+  echo "  ✓ Agent parity OK"
+fi
 
 # Create runtime dirs
 mkdir -p "$TARGET/kg/runtime"

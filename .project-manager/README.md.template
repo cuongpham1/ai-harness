@@ -51,4 +51,10 @@ See `.project-manager/tasks/`
 
 ## Known issues / backlog
 
-- [ ] (none yet)
+Product issues go here. Harness/infra backlog lives in `harness.db` (benchmark, hooks, installer):
+
+```bash
+scripts/bin/harness-cli query backlog
+```
+
+- [ ] (none in README — check CLI above)

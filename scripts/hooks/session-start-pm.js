@@ -24,6 +24,8 @@ function getTasksByStatus() {
   const inProgress = [], todo = [], blocked = [];
   const files = fs.readdirSync(tasksDir).filter(f => f.endsWith('.md')).sort();
 
+  const discipline = [];
+
   for (const file of files) {
     const content = readFileSafe(path.join(tasksDir, file));
     if (!content) continue;
@@ -31,6 +33,15 @@ function getTasksByStatus() {
     const titleMatch = content.match(/^# Task:\s*(.+)$/m);
     const status = statusMatch?.[1]?.toLowerCase() || 'todo';
     const entry = { id: file.replace('.md', ''), title: titleMatch?.[1] || file };
+
+    const blocks = content.match(/### After-Work — [^\n]+\n([\s\S]*?)(?=### After-Work —|$)/g);
+    if (blocks && blocks.length) {
+      const last = blocks[blocks.length - 1];
+      const outcome = (last.match(/\*\*Outcome:\*\*\s*(\S+)/i) || [])[1]?.toLowerCase();
+      if (outcome === 'completed' && status !== 'done' && status !== 'completed') {
+        discipline.push(entry.id);
+      }
+    }
 
     if (status === 'in_progress') inProgress.push(entry);
     else if (status === 'blocked') blocked.push(entry);
@@ -73,6 +84,13 @@ try {
   if (inProgress.length === 0 && todo.length === 0 && blocked.length === 0) {
     parts.push('');
     parts.push('Không có task nào. Xem `.project-manager/README.md` để bắt đầu.');
+  }
+
+  if (discipline.length > 0) {
+    parts.push('');
+    parts.push('### ⚠ Task close discipline');
+    parts.push(`Tasks with \`Outcome: completed\` but Status not \`done\`: **${discipline.join(', ')}**.`);
+    parts.push('Run `bash scripts/verify-story.sh --task <id>`; on pass set `Status: done` and tick AC.');
   }
 
   process.stdout.write(JSON.stringify({

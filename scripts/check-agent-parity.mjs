@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
  * CI drift gate — .cursor/agents body must match .claude/agents (after frontmatter).
- * Run: node scripts/check-agent-parity.mjs
+ * Run: node scripts/check-agent-parity.mjs [target_dir]
  */
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 
-const root = process.cwd();
+const root = path.resolve(process.argv[2] || process.cwd());
 const claudeDir = path.join(root, '.claude', 'agents');
 const cursorDir = path.join(root, '.cursor', 'agents');
 

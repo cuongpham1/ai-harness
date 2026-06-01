@@ -44,6 +44,8 @@ Work in `.project-manager/tasks/*.md`. Append structured After-Work:
 
 Cursor **stop** hooks sync After-Work to `harness.db` automatically.
 
+**Close discipline:** `Outcome: completed` ≠ task closed. Set `**Status:** done` only after `bash scripts/verify-story.sh` writes `proof: true` to `kg/runtime/verify-last.json`, then tick AC. Monorepos: optional `**Verify lint:**` / `**Verify test:**` on the task file. Product backlog → README; harness/infra backlog → `scripts/bin/harness-cli query backlog`.
+
 ## Stack commands
 
 Read `.harness-profile` and `docs/*_STACK.md` for test/lint/run commands.

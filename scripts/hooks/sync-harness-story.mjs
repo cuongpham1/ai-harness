@@ -19,7 +19,8 @@ import {
 
 const root = projectRoot();
 const stateFile = path.join(root, 'kg', 'runtime', 'story-sync-state.json');
-const verifyReportFile = path.join(root, 'kg', 'runtime', 'verify-last.json');
+const verifyReportDir = path.join(root, 'kg', 'runtime');
+const verifyLastFile = path.join(verifyReportDir, 'verify-last.json');
 const cliPath = path.join(root, 'scripts', 'bin', 'harness-cli');
 
 function loadState() {
@@ -35,19 +36,32 @@ function saveState(state) {
   fs.writeFileSync(stateFile, JSON.stringify(state, null, 2));
 }
 
-function readVerifyReport() {
+function readVerifyReport(taskId) {
+  const perTask = path.join(verifyReportDir, `verify-${taskId}.json`);
+  const raw = readFileSafe(perTask) || readFileSafe(verifyLastFile) || '{}';
   try {
-    return JSON.parse(readFileSafe(verifyReportFile) || '{}');
+    const report = JSON.parse(raw);
+    if (report.task && report.task !== taskId) return {};
+    return report;
   } catch {
     return {};
   }
+}
+
+function proofArgsFromReport(report, taskId, content) {
+  if (!isProofVerifyReport(report, taskId, content)) return [];
+  const ev = String(report.evidence || '');
+  const args = [];
+  if (ev.includes('lint:pass')) args.push('--unit', '1');
+  if (ev.includes('test:pass')) args.push('--integration', '1');
+  return args;
 }
 
 /** Promote to implemented only when verify-last.json is a proof pass for this task. */
 function mapTaskStatus(raw, taskId, content) {
   const s = (raw || '').toLowerCase().replace(/\s+/g, '_');
   if (s === 'done' || s === 'completed') {
-    const report = readVerifyReport();
+    const report = readVerifyReport(taskId);
     if (isProofVerifyReport(report, taskId, content)) return 'implemented';
     return 'in_progress';
   }
@@ -60,18 +74,25 @@ function syncTask(taskId, content) {
   const storyId = normalizeStoryId(taskField(content, 'Story ID'));
   if (!storyId) return false;
 
+  const report = readVerifyReport(taskId);
   const status = mapTaskStatus(taskField(content, 'Status'), taskId, content);
   const lane = normalizeLane(taskField(content, 'Lane'));
   const titleMatch = content.match(/^# Task:\s*(.+)$/m);
   const title = titleMatch ? titleMatch[1].trim() : taskId;
+  const proofTag = isProofVerifyReport(report, taskId, content) ? 'proof' : 'noproof';
   const hash = crypto
     .createHash('sha256')
-    .update(`${storyId}:${status}:${lane}:${title}`)
+    .update(`${storyId}:${status}:${lane}:${title}:${proofTag}:${report.at || ''}`)
     .digest('hex')
     .slice(0, 16);
   const stateKey = `${taskId}:${hash}`;
   const state = loadState();
   if (state[stateKey]) return false;
+
+  const evidence =
+    status === 'implemented' && isProofVerifyReport(report, taskId, content)
+      ? `verify-proof task:${taskId} (${report.evidence || 'ok'})`
+      : `task:${taskId} lane:${lane} synced`;
 
   const args = [
     'story',
@@ -81,7 +102,8 @@ function syncTask(taskId, content) {
     '--status',
     status,
     '--evidence',
-    `task:${taskId} lane:${lane} synced`,
+    evidence,
+    ...proofArgsFromReport(report, taskId, content),
   ];
 
   try {
