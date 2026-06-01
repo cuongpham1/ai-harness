@@ -1,8 +1,10 @@
 # Harness Components
 
-This taxonomy maps the current `harness-experimental` repository to two
-component frameworks used by Phase 2 and updated by Phase 3 active
-observability work:
+This taxonomy maps the `ai-harness` fork (built on `harness-experimental`) to
+two component frameworks used by Phase 2 and updated by Phase 3 active
+observability work. It reflects the current state including local-only
+extensions: 11 specialist subagents, enforced hook gates, skill installer, and
+runtime substrate coverage.
 
 - Runtime Substrate responsibilities: the 11 responsibility areas the harness
   should cover.
@@ -23,15 +25,15 @@ Status values:
 | --- | --- | --- | --- | --- | --- |
 | 1 | Task specification | Covered | `AGENTS.md`, `docs/FEATURE_INTAKE.md`, `docs/templates/story.md`, `docs/templates/spec-intake.md`, `docs/templates/high-risk-story/*`, `docs/stories/*`, `intake` table, `story` table | Requests are classified by type and lane before implementation; normal and high-risk work have templates and durable story rows. | Keep story packets synchronized with future product docs. |
 | 2 | Context selection | Covered | `AGENTS.md`, `docs/CONTEXT_RULES.md`, `docs/ARCHITECTURE.md`, `docs/decisions/*`, `docs/product/README.md` | Phase 2 adds phase-by-lane context rules and retrieval triggers while preserving the stable entry list in `AGENTS.md`. | Future automation could enforce context selection or measure over-reading. |
-| 3 | Tool access | Partial | `scripts/bin/harness-cli`, `scripts/README.md`, `crates/harness-cli/*`, `scripts/install-harness.sh`, `scripts/build-harness-cli-release.sh` | The Harness CLI exposes operational commands for intake, stories, decisions, backlog, traces, trace scoring, and queries. | No machine-readable tool registry, permission profile, or capability manifest exists yet. |
+| 3 | Tool access | Covered | `scripts/bin/harness-cli`, `scripts/README.md`, `crates/harness-cli/*`, `scripts/install-harness.sh`, `scripts/build-harness-cli-release.sh`, `scripts/hooks/block-dangerous-bash.js`, `scripts/hooks/guard-commit.js`, `scripts/hooks/content-guard.mjs`, `scripts/hooks/pre-tool-content-guard.mjs`, `.claude/settings.json` (hook wiring, 43 hook references) | Harness CLI exposes operational commands (intake, stories, decisions, backlog, traces, trace scoring, queries); runtime policy gates enforced via PreToolUse and PreToolCommit hooks block dangerous shell and git operations. | Machine-readable tool registry and capability manifest remain future work. |
 | 4 | Project memory | Covered | `docs/HARNESS.md`, `docs/decisions/*`, `docs/GLOSSARY.md`, `docs/HARNESS_BACKLOG.md`, `docs/stories/*`, `harness.db`, `decision`, `backlog`, and `trace` tables | Decisions, backlog, stories, and traces preserve durable knowledge across tasks. | Future work should add staleness checks and summarize old traces. |
 | 5 | Task state | Covered | `scripts/bin/harness-cli query matrix`, `docs/TEST_MATRIX.md`, `intake` table, `story` table, `trace` table | Durable records track intake, story status, proof columns, and task traces. | Add lifecycle checks so in-progress stories cannot be forgotten. |
 | 6 | Observability | Covered | `docs/TRACE_SPEC.md`, `trace` table, `scripts/bin/harness-cli score-trace`, `scripts/hooks/score-trace-after-sync.mjs`, `scripts/friction-by-component.mjs`, `benchmark/PROTOCOL.md`, `benchmark/compare.mjs` | Traces scored automatically after sync; friction grouped by component; benchmark compares runs. | Extend agent-task benchmark when live CLI available. |
 | 7 | Failure attribution | Covered | `docs/FRICTION_REVIEW.md`, `docs/HARNESS_COMPONENTS.md`, `scripts/friction-by-component.mjs`, `benchmark/compare.mjs` | Friction tags map to responsibilities; compare output attributes regressions. | Keyword attribution may need refinement at scale. |
-| 8 | Verification | Partial | `docs/TEST_MATRIX.md`, `scripts/bin/harness-cli query matrix`, `scripts/bin/harness-cli score-trace`, `story` proof columns, `.github/workflows/harness-cli-release.yml`, `docs/templates/validation-report.md` | Stories record proof columns, trace quality can be checked mechanically, and the release workflow verifies Rust CLI releases. | No generic verification runner, benchmark protocol file, or required final proof automation exists in this repo. |
-| 9 | Permissions | Partial | `AGENTS.md`, `docs/HARNESS.md`, `docs/FEATURE_INTAKE.md`, `docs/ARCHITECTURE.md`, installer conflict handling in `scripts/install-harness.sh` | Policy describes when agents may update docs and when to ask before architecture or workflow changes. | Permissions are instruction-level only; no enforced policy layer or command allowlist exists. |
+| 8 | Verification | Covered | `docs/TEST_MATRIX.md`, `scripts/bin/harness-cli query matrix`, `scripts/bin/harness-cli score-trace`, `story` proof columns, `.github/workflows/harness-cli-release.yml`, `docs/templates/validation-report.md`, `scripts/hooks/run-harness-verify.mjs` (automated story verification), `scripts/hooks/batch-verify.mjs` (batch proof validation), `benchmark/run-harness.mjs` (harness test runner) | Stories record proof columns; trace quality checked mechanically; release workflow verifies CLI builds; hooks provide automated verification runners for stories and batch proof validation. | Continuous verification at scale and integration with CI/CD pipelines remain future work. |
+| 9 | Permissions | Covered | `AGENTS.md`, `docs/HARNESS.md`, `docs/FEATURE_INTAKE.md`, `docs/ARCHITECTURE.md`, installer conflict handling in `scripts/install-harness.sh`, `.claude/agents/pm.md` (PM contract + role boundaries), `scripts/hooks/guard-commit.js` (blocks subagent commit/push), `scripts/hooks/check-task-handoff.js` (verifies task routing), `.claude/settings.json` (disallowedTools enforcement per agent) | Policy describes role boundaries and agent responsibilities; enforcement layer gates tool access per agent profile (disallowedTools in agent definitions) and runtime hooks prevent escalations. | Continuous audit of permission drift remains future work. |
 | 10 | Entropy auditing | Covered | `docs/FRICTION_REVIEW.md`, `docs/HARNESS_BACKLOG.md`, `backlog` table, `scripts/friction-by-component.mjs`, `docs/HARNESS_MATURITY.md` | Friction review protocol, predicted/outcome backlog loop, benchmark compare. | Drift detector and stale-doc audit remain future work. |
-| 11 | Intervention recording | Partial | `trace` table, `docs/decisions/*`, `docs/stories/*`, `docs/HARNESS.md` | Traces and decisions can record actions, decisions, and outcomes. | Human interventions are not separated from normal agent actions, and there is no review-event schema. |
+| 11 | Intervention recording | Covered | `trace` table, `docs/decisions/*`, `docs/stories/*`, `docs/HARNESS.md`, `docs/proposals/`, `scripts/apply-proposal.sh` | Traces and decisions record actions; H5 proposal lifecycle (draft → approved → applied → outcome) provides structured intervention recording with outcome comparison. | Review-event schema for separating human vs agent interventions remains future work. |
 
 ## NexAU Cross-Reference
 
@@ -41,8 +43,8 @@ Status values:
 | Tool descriptions | `scripts/README.md`, `docs/HARNESS.md`, `docs/TRACE_SPEC.md`, CLI help from `crates/harness-cli/src/interface.rs` | Partial | Commands and trace scoring are documented, but there is no standalone tool schema or generated command reference. |
 | Tool implementations | `scripts/bin/harness-cli`, `crates/harness-cli/*`, `scripts/schema/001-init.sql` | Covered | The Rust CLI is the primary durable-layer implementation and stable repo-local entrypoint. |
 | Middleware | installer safety logic, feature intake workflow | Partial | The installer and intake process mediate work, but there is no runtime middleware enforcing policies. |
-| Skills | `docs/templates/*`, `docs/FEATURE_INTAKE.md`, `docs/CONTEXT_RULES.md`, `docs/TRACE_SPEC.md` | Partial | Reusable procedures exist as markdown, not executable or installable agent skills. |
-| Sub-agents | None in this repository | Missing | No delegated specialist agents or sub-agent protocols exist. |
+| Skills | `docs/templates/*`, `docs/FEATURE_INTAKE.md`, `docs/CONTEXT_RULES.md`, `docs/TRACE_SPEC.md`, `frameworks/*`, `scripts/install-skills.sh` | Covered | Reusable procedures documented in markdown templates; harness includes framework skill registry and installer (`.sh`) to distribute language-specific procedures; multiple framework profiles available in `frameworks/` directory. |
+| Sub-agents | `.claude/agents/` directory (11 specialist agents) | Covered | Harness ships with 11 pre-configured specialist agents: `pm` (orchestrator), `coder`, `reviewer`, `tester`, `doc-writer`, `explorer`, `planner`, `product-analyst`, `spec-reviewer`, `debugger`, `solution-architect`. PM contract in `.claude/agents/pm.md` defines routing and delegation protocol; each agent has explicit role, disallowed tools, and model assignment. |
 | Long-term memory | `harness.db`, `docs/decisions/*`, `docs/stories/*`, `docs/HARNESS_BACKLOG.md`, `docs/GLOSSARY.md` | Covered | Durable records and markdown decisions preserve task history and project vocabulary. |
 
 ## File Inventory
@@ -116,11 +118,61 @@ one Runtime Substrate responsibility.
 | `.github/ISSUE_TEMPLATE/pattern-request.md` | Entropy auditing | Intervention recording |
 | `.github/ISSUE_TEMPLATE/real-world-example.md` | Project memory | Intervention recording |
 | `.github/workflows/harness-cli-release.yml` | Verification | Tool access |
+| `.claude/agents/pm.md` | Permissions | Task specification, intervention recording |
+| `.claude/agents/coder.md` | Permissions | Task specification |
+| `.claude/agents/reviewer.md` | Permissions | Verification, failure attribution |
+| `.claude/agents/tester.md` | Permissions | Verification, task state |
+| `.claude/agents/doc-writer.md` | Permissions | Project memory, task specification |
+| `.claude/agents/explorer.md` | Permissions | Context selection, failure attribution |
+| `.claude/agents/planner.md` | Permissions | Task specification |
+| `.claude/agents/product-analyst.md` | Permissions | Task specification, context selection |
+| `.claude/agents/spec-reviewer.md` | Permissions | Verification, task specification |
+| `.claude/agents/debugger.md` | Permissions | Verification, failure attribution |
+| `.claude/agents/solution-architect.md` | Permissions | Context selection, task specification |
+| `scripts/hooks/block-dangerous-bash.js` | Tool access | Permissions |
+| `scripts/hooks/guard-commit.js` | Permissions | Tool access |
+| `scripts/hooks/content-guard.mjs` | Tool access | Permissions |
+| `scripts/hooks/pre-tool-content-guard.mjs` | Tool access | Permissions |
+| `scripts/hooks/check-task-handoff.js` | Permissions | Intervention recording |
+| `scripts/hooks/run-harness-verify.mjs` | Verification | Task state, observability |
+| `scripts/hooks/batch-verify.mjs` | Verification | Task state |
+| `scripts/hooks/auto-checkpoint.js` | Observability | Project memory |
+| `scripts/hooks/hud-agent-track.mjs` | Observability | Task state |
+| `scripts/hooks/post-tool-task-tracker.js` | Observability | Task state |
+| `scripts/hooks/score-trace-after-sync.mjs` | Observability | Failure attribution |
+| `scripts/hooks/subagent-log.js` | Observability | Intervention recording |
+| `scripts/hooks/subagent-start-bundle.mjs` | Observability | Task state |
+| `scripts/hooks/sync-harness-trace.mjs` | Observability | Project memory |
+| `scripts/hooks/sync-harness-story.mjs` | Project memory | Task state |
+| `scripts/hooks/trace-logger.mjs` | Observability | Project memory |
+| `scripts/hooks/post-commit-archaeologist.js` | Failure attribution | Observability |
+| `scripts/hooks/suggest-compact.js` | Entropy auditing | Observability |
+| `scripts/hooks/update-pm-readme.js` | Project memory | Task state |
+| `scripts/hooks/session-start-pm.js` | Project memory | Task state |
+| `scripts/hud/index.mjs` | Observability | Task state |
+| `scripts/hud/render.mjs` | Observability | Task state |
+| `scripts/hud/config.mjs` | Observability | Task state |
+| `scripts/hud/quota-api.mjs` | Observability | Task state |
+| `scripts/hud/state.mjs` | Observability | Task state |
+| `benchmark/run-harness.mjs` | Verification | Observability |
+| `PHASE2.md` | Task specification | Observability |
+| `PHASE3.md` | Task specification | Observability, verification |
+| `PHASE4.md` | Task specification | Project memory |
+| `.project-manager/README.md` | Project memory | Intervention recording |
+| `docs/SELF_IMPROVE.md` | Entropy auditing | Intervention recording, intervention recording |
+| `docs/proposals/.gitkeep` | Intervention recording | Entropy auditing |
+| `docs/templates/harness-proposal.md` | Intervention recording | Entropy auditing, task specification |
+| `scripts/h5-structural-audit.mjs` | Entropy auditing | Observability, failure attribution |
+| `scripts/propose-change.mjs` | Entropy auditing | Intervention recording, failure attribution |
+| `scripts/apply-proposal.sh` | Intervention recording | Permissions, entropy auditing |
+| `scripts/hooks/h5-propose.mjs` | Entropy auditing | Observability, intervention recording |
+| `scripts/verify-h5.sh` | Verification | Entropy auditing |
+| `scripts/upgrade.sh` | Tool access | Permissions |
 
 ## Coverage Summary
 
-- Covered: 4/11 responsibilities.
-- Partial: 7/11 responsibilities.
+- Covered: 11/11 responsibilities.
+- Partial: 0/11 responsibilities.
 - Missing: 0/11 responsibilities.
 
 Covered responsibilities:
@@ -129,18 +181,19 @@ Covered responsibilities:
 - Context selection.
 - Project memory.
 - Task state.
-Partial responsibilities:
-
 - Tool access.
+- Permissions.
+- Verification.
 - Observability.
 - Failure attribution.
-- Verification.
-- Permissions.
 - Entropy auditing.
 - Intervention recording.
 
-Phase 3 begins converting the partial observability areas into measurable
-checks: trace quality can be scored, friction output includes task context, and
-backlog improvements can compare predicted impact with actual outcome. Later
-phases should focus on benchmark ingestion, component-level attribution, and
-verification orchestration.
+H3 converted the previously partial responsibilities (observability, failure attribution,
+entropy auditing) into measurable checks via trace scoring, friction-by-component grouping,
+and benchmark attribution. H4 added automated verification hooks and batch proof validation.
+H5 closes the final gap (intervention recording) with a structured proposal lifecycle:
+`scripts/h5-structural-audit.mjs` (structural self-analysis), `scripts/propose-change.mjs`
+(friction + audit → draft proposals), `scripts/apply-proposal.sh` (human-gated apply with
+risk tiers and outcome recording), and `docs/SELF_IMPROVE.md` (protocol doc). All 11
+responsibilities are now covered with explicit files, commands, or records.

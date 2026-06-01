@@ -190,6 +190,14 @@
                         "command": "node scripts/hooks/backlog-surface.mjs"
                     }
                 ]
+            },
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/h5-propose.mjs"
+                    }
+                ]
             }
         ]
     }

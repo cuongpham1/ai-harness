@@ -244,8 +244,11 @@ Benchmark indicators:
 
 Current status:
 
-- Not achieved. Phase 2 names the direction; later phases must implement the
-  evolution loop.
+- **Achieved.** `scripts/h5-structural-audit.mjs` (structural self-analysis without runtime logs),
+  `scripts/propose-change.mjs` (friction + audit → draft proposals), `scripts/hooks/h5-propose.mjs`
+  (Stop hook auto-generation), `scripts/apply-proposal.sh` (human-gated apply with risk tiers),
+  `scripts/verify-h5.sh`, and `docs/SELF_IMPROVE.md` provide the self-improvement loop.
+  Downstream runtime log import remains future work.
 
 Activated responsibilities:
 
@@ -263,7 +266,7 @@ Activated responsibilities:
 | H2 | Achieved | `scripts/bin/harness-cli`, `scripts/schema/001-init.sql`, durable story records, `docs/HARNESS_COMPONENTS.md`, `docs/HARNESS_MATURITY.md`, `docs/TRACE_SPEC.md`, and `docs/CONTEXT_RULES.md` define the Phase 2 surface. |
 | H3 | Achieved | `score-trace`, `friction-by-component`, `benchmark/compare.mjs` attribution, backlog outcome loop, `scripts/verify-h3.sh`. |
 | H4 | Achieved | `verify-story.sh`, `batch-verify.sh`, story sync hook, `backlog-surface.mjs`, `verify-h4.sh`, agent parity CI. |
-| H5 | Not achieved | No self-improvement protocol or automated evolution loop exists. |
+| H5 | Achieved | `h5-structural-audit.mjs`, `propose-change.mjs`, `h5-propose.mjs`, `apply-proposal.sh`, `verify-h5.sh`, `docs/SELF_IMPROVE.md`. |
 
 ## Responsibility Activation
 
@@ -287,4 +290,4 @@ Phase 3 completes the H2→H3 transition (trace scoring, friction review, benchm
 compare, backlog outcome loop). Phase 4 completes H4: CLI `story verify` (upstream v0.1.7),
 `batch-verify.sh` (batch proof for every story + decision row), backlog surfacing hooks,
 and missing-evidence gating via `run-harness-verify.mjs`. See [PHASE4.md](../PHASE4.md).
-Generic multi-stack CI matrices and the H5 self-improvement loop remain future work.
+Generic multi-stack CI matrices remain future work. H5 self-improvement loop is implemented: see `docs/SELF_IMPROVE.md`, `scripts/h5-structural-audit.mjs`, `scripts/propose-change.mjs`, `scripts/apply-proposal.sh`, and `scripts/verify-h5.sh`. Downstream runtime log import (`harness-cli import-friction`) remains future work.

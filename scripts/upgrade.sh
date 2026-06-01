@@ -74,10 +74,36 @@ copy_if_new "scripts/rtk-python.sh"
 copy_if_new "docs/TOKEN_EFFICIENCY.md"
 copy_if_new "docs/MCP_SETUP.md"
 copy_if_new "scripts/verify-h3.sh"
+copy_if_new "scripts/verify-h4.sh"
+copy_if_new "scripts/verify-h5.sh"
+copy_if_new "scripts/h5-structural-audit.mjs"
+copy_if_new "scripts/propose-change.mjs"
+copy_if_new "scripts/batch-verify.sh"
+copy_if_new "scripts/verify-story.sh"
+copy_if_new "scripts/check-agent-parity.mjs"
+copy_if_new "scripts/hooks/h5-propose.mjs"
+copy_if_new "scripts/hooks/backlog-surface.mjs"
+copy_if_new "scripts/hooks/run-harness-verify.mjs"
+copy_if_new "scripts/hooks/sync-harness-story.mjs"
+copy_if_new "scripts/hooks/lib-harness-task.mjs"
+copy_if_new "scripts/apply-proposal.sh"
+copy_if_new "docs/SELF_IMPROVE.md"
+copy_if_new "docs/HARNESS_VERIFICATION.md"
+copy_if_new "docs/templates/harness-proposal.md"
 copy_if_new "docs/FRICTION_REVIEW.md"
 copy_if_new "scripts/merge-agents-md.sh"
 copy_if_new "templates/AGENTS.harness-block.md"
 copy_if_new "templates/AGENTS.starter.md"
+
+# H5 proposals dirs
+for d in "docs/proposals" "docs/proposals/archive"; do
+  if [[ ! -d "$TARGET/$d" ]]; then
+    mkdir -p "$TARGET/$d"
+    touch "$TARGET/$d/.gitkeep"
+    echo "  + $d/.gitkeep"
+    added=$((added + 1))
+  fi
+done
 
 # Merge AGENTS.md harness block (never overwrite project content)
 if [[ -x "$HARNESS_DIR/scripts/merge-agents-md.sh" ]]; then
@@ -97,6 +123,9 @@ for doc in \
 do
   copy_if_new "$doc"
 done
+
+# Schema file — required for harness-cli init
+copy_if_new "scripts/schema/001-init.sql"
 
 # Harness CLI — install if missing
 if [[ ! -x "$TARGET/scripts/bin/harness-cli" && -x "$HARNESS_DIR/scripts/bin/harness-cli" ]]; then
@@ -188,6 +217,18 @@ if (!hasScoreTrace) {
     hooks: [{ type: 'command', command: 'node scripts/hooks/score-trace-after-sync.mjs' }]
   });
   process.stderr.write('  + Stop: score-trace-after-sync.mjs\n');
+}
+
+const hasH5Propose = settings.hooks.Stop.some(
+  h => JSON.stringify(h).includes('h5-propose.mjs')
+);
+if (!hasH5Propose) {
+  settings.hooks.Stop.push({
+    hooks: [{ type: 'command', command: 'node scripts/hooks/h5-propose.mjs' }]
+  });
+  process.stderr.write('  + Stop: h5-propose.mjs\n');
+} else {
+  process.stderr.write('  ~ Stop: h5-propose already present\n');
 }
 
 if (settings.mcpServers && settings.mcpServers['mobile-mcp']) {
