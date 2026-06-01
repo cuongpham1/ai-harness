@@ -280,8 +280,9 @@ Activated responsibilities:
 | Entropy auditing | Missing | Missing | Partial | Covered | Covered | Covered |
 | Intervention recording | Missing | Partial | Partial | Covered | Covered | Covered |
 
-## Phase 3 Interpretation
+## Phase 3–4 Interpretation
 
-Phase 3 completes the H2→H3 transition. Active trace scoring, friction review,
-benchmark comparison with responsibility attribution, and the backlog outcome
-loop are in place. H4 (automated verification runner) remains future work.
+Phase 3 completes the H2→H3 transition (trace scoring, friction review, benchmark
+compare, backlog outcome loop). Phase 4 adds CLI `story verify` (upstream v0.1.7)
+and installer H4 thin slice (`verify-story.sh`, Stop hooks). Full H4 batch proof
+and multi-stack CI matrices remain future work.

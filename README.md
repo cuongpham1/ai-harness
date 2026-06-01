@@ -1,172 +1,277 @@
-# AI Harness — Bộ công cụ AI cho dự án
+# AI Harness — Bộ khung vận hành AI cho dự án phần mềm
 
-Harness tích hợp Claude Code agents, hooks tự động, pipeline review, và **durable layer** từ [harness-experimental](https://github.com/hoangnb24/harness-experimental) vào bất kỳ dự án nào.
+**Repository:** _(bạn sẽ gắn link GitHub tại đây)_
 
-## Cài đặt
+Repo này là **bộ cài đặt (installer)** — không phải ứng dụng chạy trực tiếp. Chạy `install.sh` để gắn quy trình agent, hooks, tài liệu và lớp dữ liệu bền (`harness.db`) vào **dự án đích** của bạn. Kết hợp [harness-experimental](https://github.com/hoangnb24/harness-experimental) (CLI, trace, maturity) với pipeline đa agent (Claude Code + Cursor).
+
+---
+
+## Repo này làm được gì?
+
+| Khả năng | Mô tả ngắn |
+|----------|------------|
+| **Cài harness vào project** | Một lệnh: agents, hooks, docs, CLI, 12 stack framework |
+| **Pipeline bắt buộc** | coder → spec-reviewer → reviewer → tester (PM điều phối) |
+| **Phân loại rủi ro** | Lane `tiny` / `normal` / `high-risk` — biết khi nào review đầy đủ |
+| **Task + handoff** | File `.project-manager/tasks/*.md`, After-Work, hook chặn thiếu handoff |
+| **Trace tự động** | After-Work → sync → `harness.db` + `score-trace` |
+| **Verify tự động (H4)** | Khi `Outcome: completed` → lint/test theo stack + `proof` trong DB |
+| **CLI durable** | intake, story, decision, backlog, trace, query (SQLite) |
+| **Cursor + Claude** | Cùng quy trình; kiểm tra parity agent trong CI |
+| **Benchmark harness** | Đo compliance harness (không phụ thuộc app của bạn) |
+
+**Không làm:** scaffold code ứng dụng, deploy, thay CI/CD của product — chỉ **vận hành AI** trong repo.
+
+---
+
+## Ai nên dùng?
+
+- Team dùng **Claude Code** và/hoặc **Cursor** với agent/subagent.
+- Muốn agent **không “xong ảo”** — có proof, trace, task file làm nguồn sự thật.
+- Dự án Node, Python, Flutter, Rust, v.v. (12 profile) hoặc generic (ít verify stack).
+
+---
+
+## Cài đặt nhanh
+
+### Yêu cầu
+
+- **Node.js 18+**
+- **curl** (tải `harness-cli` khi cài project mới)
+- **Claude Code** và/hoặc **Cursor** (tùy IDE)
+- Tùy chọn: **Rust/cargo** (build CLI local nếu không tải được binary)
+
+### Cài vào dự án đích
 
 ```bash
-bash install.sh [--yes] [--framework <id>] [--name "<tên>"] /đường/dẫn/dự-án
+git clone <link-repo-ai-harness> ai-harness
+cd ai-harness
+
+bash install.sh --yes --framework nodejs --name "Tên dự án" /đường/dẫn/dự-án-của-bạn
 ```
 
-Ví dụ:
+**Framework** (auto-detect hoặc `--framework`):  
+`nodejs`, `react`, `nextjs`, `vue`, `flutter`, `python`, `go`, `rust`, `java`, `csharp`, `php`, `ruby` — chi tiết [frameworks/README.md](frameworks/README.md).
+
+**Upgrade** (đã có harness, chỉ thêm file mới):
+
 ```bash
-bash install.sh --yes --framework nodejs --name "My API" ~/projects/my-api
-bash install.sh --yes --framework flutter --name "My App" ~/projects/my-app
-bash install.sh ~/projects/existing-app   # merge AGENTS.md, không ghi đè nội dung project
+bash install.sh --yes /đường/dẫn/dự-án   # merge, không ghi đè file cũ
 ```
 
-**12 framework profiles:** `flutter`, `react`, `nextjs`, `vue`, `nodejs`, `python`, `go`, `rust`, `java`, `csharp`, `php`, `ruby` — xem [frameworks/README.md](frameworks/README.md).
-
-Cập nhật docs/CLI từ upstream (merge, không ghi đè `.claude/`):
+**Chỉ cập nhật docs/CLI từ upstream** (giữ `.claude/` hiện có):
 
 ```bash
 bash scripts/install-harness.sh --merge --yes --directory /đường/dẫn/dự-án
 ```
 
-## Harness gồm gì?
+Sau cài, trong **dự án đích** có: `.claude/`, `.cursor/`, `scripts/`, `docs/`, `.project-manager/`, `frameworks/<id>/profile.json`, `harness.db` (local, gitignored).
 
-| Thành phần | Vị trí | Tác dụng |
-|-----------|--------|---------|
-| Agent definitions | `.claude/agents/` | Định nghĩa PM, coder, reviewer, tester, v.v. |
-| Hooks | `scripts/hooks/` | Tự động enforce quy trình |
-| HUD | `scripts/hud/` | Status line hiển thị trong Claude Code |
-| Knowledge Graph | `scripts/kg.js` | Lưu trữ trạng thái session |
-| **Harness CLI** | `scripts/bin/harness-cli` | SQLite durable layer: intake, story, trace, backlog |
-| Docs | `docs/` | Quy trình, phân loại, trace spec, maturity |
-| Task manager | `.project-manager/` | Quản lý task và handoff |
-| Benchmark | `benchmark/` | Harness benchmark tasks |
+---
 
-## Durable layer (harness-cli)
+## Quy trình hàng ngày
 
-```bash
-scripts/bin/harness-cli init              # tạo harness.db
-scripts/bin/harness-cli migrate           # schema 002 (story verify_command)
-scripts/bin/harness-cli story verify <id> # chạy verify_command của story (CLI 0.1.7)
-scripts/bin/harness-cli query matrix      # trạng thái proof
-scripts/bin/harness-cli intake ...        # phân loại công việc
-scripts/bin/harness-cli trace ...         # ghi trace task
-scripts/bin/harness-cli score-trace       # chấm chất lượng trace
-scripts/bin/harness-cli query friction    # xem friction patterns
-node scripts/friction-by-component.mjs    # group friction by component (H3)
-bash scripts/verify-h3.sh                 # verify H3 maturity
-bash scripts/verify-story.sh            # H4 lane-aware proof (active task, Stop hooks)
-bash scripts/verify-h4.sh                 # H3 + agent parity + H4 gates
-bash benchmark/run-harness.sh             # deterministic harness benchmark
+### 1. Nhận việc → tạo task
+
+Tạo file theo [docs/templates/task.md](docs/templates/task.md):
+
+```text
+.project-manager/tasks/task-042.md
 ```
 
-Chi tiết: `docs/HARNESS.md`, `docs/CURSOR.md`, `docs/TRACE_SPEC.md`, `scripts/README.md`.
+Ghi rõ: **Lane**, AC, scope, **Story ID** (nếu có).
 
-## Cursor (full parity)
+### 2. Chọn lane ([docs/FEATURE_INTAKE.md](docs/FEATURE_INTAKE.md))
 
-Cài cùng `install.sh`. Hooks + subagents tự động:
+| Lane | Khi nào | Pipeline |
+|------|---------|----------|
+| **tiny** | 1–2 file, thay đổi nhỏ | coder → tester (bỏ review đầy đủ) |
+| **normal** | Feature thường | coder → spec-reviewer → reviewer → tester |
+| **high-risk** | Auth, breaking API, kiến trúc | Như normal + architect + ADR |
+
+### 3. Implement (delegate subagent)
+
+Trong Claude/Cursor, **PM không code trực tiếp** — giao `@coder` (hoặc subagent `coder`) theo task file.
+
+Đọc stack: `.harness-profile` + `docs/*_STACK.md` (ví dụ `docs/NODEJS_STACK.md`).
+
+### 4. Kết thúc phiên — After-Work (bắt buộc)
+
+Append vào task file:
+
+```markdown
+### After-Work — 2026-06-01
+**Agent:** coder
+**Outcome:** completed
+**Done:** Mô tả ≥10 ký tự những gì đã làm
+**Files changed:** src/a.ts, src/b.ts
+**Errors:** none
+**Friction:** none
+**Story ID:** US-042
+```
+
+**Chỉ khi `Outcome: completed`** hook mới chạy lint/test (lane normal/high-risk).
+
+Hook Stop tự động (không cần nhớ từng lệnh):
+
+1. Kiểm tra handoff  
+2. Sync trace → `harness.db`  
+3. `score-trace`  
+4. **verify** (`verify-story.sh`)  
+5. Sync story status  
+6. Checkpoint  
+
+Chi tiết: [docs/HARNESS_VERIFICATION.md](docs/HARNESS_VERIFICATION.md).
+
+### 5. PM đánh dấu task xong
+
+Cập nhật `**Status:** done` trong task file sau khi pipeline + verify pass.
+
+---
+
+## Lệnh `harness-cli` (trong dự án đã cài)
+
+Binary: `scripts/bin/harness-cli` (v **0.1.7**, tải lúc `install.sh`).
 
 ```bash
-bash scripts/install-cursor-layer.sh /path/to/project   # nếu project đã có harness
+cd /đường/dẫn/dự-án-đã-cài
+
+scripts/bin/harness-cli init              # Tạo harness.db (lần đầu)
+scripts/bin/harness-cli migrate           # Migration 002 (story verify)
+scripts/bin/harness-cli query stats       # Tổng quan
+scripts/bin/harness-cli query matrix      # Story / proof matrix
+scripts/bin/harness-cli query friction    # Friction gần đây
+```
+
+| Nhóm lệnh | Ví dụ |
+|-----------|--------|
+| **intake** | `intake --type change_request --summary "..." --lane normal` |
+| **story** | `story add`, `story update --unit 1`, `story verify US-001` |
+| **decision** | `decision add`, `decision verify ADR-001` |
+| **trace** | `trace --summary "..." --agent coder --outcome completed` |
+| **score-trace** | Chấm trace mới nhất theo [TRACE_SPEC](docs/TRACE_SPEC.md) |
+| **backlog** | Ghi đề xuất cải thiện harness |
+| **query** | matrix, backlog, traces, sql, … |
+
+**Lưu ý:** Proof flags dùng số: `--unit 1 --integration 1`, **không** dùng `yes`/`no`.
+
+Trace từ task file thường **tự sync** — không cần `trace` thủ công mỗi lần.
+
+---
+
+## Verify & chất lượng harness
+
+| Lệnh | Mục đích |
+|------|----------|
+| `bash scripts/verify-story.sh` | Lint/test task đang active (framework profile) |
+| `bash scripts/verify-h4.sh` | Gate H3 + parity agent + H4 |
+| `bash scripts/verify-h3.sh` | Benchmark + friction + score-trace |
+| `node scripts/check-agent-parity.mjs` | `.claude` vs `.cursor` agents khớp body |
+
+**Hai lớp verify:**
+
+1. **Hooks + `verify-story.sh`** — lệnh test/lint trong `frameworks/<id>/profile.json`  
+2. **`harness-cli story verify`** — chạy `verify_command` lưu trong DB cho từng story  
+
+---
+
+## Claude Code vs Cursor
+
+| | Claude Code | Cursor |
+|---|-------------|--------|
+| Config | `.claude/settings.json` | `.cursor/hooks.json` |
+| Agents | `.claude/agents/` | `.cursor/agents/` (sync từ Claude) |
+| HUD | `scripts/hud/` | — |
+
+Cài Cursor layer riêng nếu cần:
+
+```bash
+bash scripts/install-cursor-layer.sh /đường/dẫn/dự-án
 ```
 
 Xem [docs/CURSOR.md](docs/CURSOR.md).
 
-## Token efficiency
+---
 
-RTK wrappers, MCP (Cursor vs Claude), lane pipeline: [docs/TOKEN_EFFICIENCY.md](docs/TOKEN_EFFICIENCY.md), [docs/MCP_SETUP.md](docs/MCP_SETUP.md).
+## Cấu trúc sau khi cài (dự án đích)
 
-## Pipeline (bắt buộc với mọi code change)
-
-```
-@coder implement
-    ↓
-@spec-reviewer — check AC compliance
-    ↓ (nếu MISSING/EXTRA → quay lại @coder)
-@reviewer — code quality (BLOCKER/MAJOR/MINOR)
-    ↓ (nếu BLOCKER → quay lại @coder)
-@tester — automated tests + UI verify
-    ↓ (nếu critical bug → quay lại @coder)
-PM mark DONE ✅
-```
-
-## Agents và model
-
-| Agent | Model | Vai trò |
-|-------|-------|---------|
-| pm | sonnet | Orchestrator — KHÔNG implement trực tiếp |
-| coder | sonnet | Implement tất cả code changes |
-| spec-reviewer | sonnet | Check spec compliance |
-| reviewer | sonnet | Code quality review |
-| tester | sonnet | Test plan + UI verify |
-| debugger | opus | Root cause analysis |
-| solution-architect | opus | Architecture decisions |
-| explorer | haiku | Codebase exploration |
-| doc-writer | haiku | Documentation |
-| planner | sonnet | Issue/task breakdown |
-| product-analyst | sonnet | PRD, use cases |
-
-## Hooks tự động
-
-| Hook | Event | Tác dụng |
-|------|-------|---------|
-| `session-start-pm.js` | SessionStart | Inject task state vào context |
-| `block-dangerous-bash.js` | PreToolUse Bash | Block lệnh nguy hiểm |
-| `guard-commit.js` | PreToolUse Bash | Block subagent git commit |
-| `suggest-compact.js` | PreToolUse (all) | Nhắc /compact sau 50 calls |
-| `hud-agent-track.mjs` | SubagentStart/Stop | Track agent activity |
-| `subagent-log.js` | SubagentStart/Stop | Log vào kg/runtime/subagent.log |
-| `post-tool-task-tracker.js` | PostToolUse Edit/Write | Audit log file edits |
-| `post-commit-archaeologist.js` | PostToolUse Bash | Track commits |
-| `update-pm-readme.js` | PostToolUse Write | Cập nhật .project-manager/README.md |
-| `auto-checkpoint.js` | Stop | Ghi checkpoint khi session kết thúc |
-| `check-task-handoff.js` | Stop | Block session end nếu thiếu After-Work |
-| `sync-harness-trace.mjs` | Stop | Sync After-Work → harness.db |
-
-## Phân loại công việc (FEATURE_INTAKE.md)
-
-| Lane | Điều kiện | Pipeline |
-|------|-----------|---------|
-| tiny | 1-2 file, <30 lines | skip review, coder → tester |
-| normal | feature mới, 1 module | full pipeline |
-| high-risk | cross-module, breaking change | full + architect |
-
-## Unified trace
-
-Task file `### After-Work` → hook `sync-harness-trace.mjs` → `harness.db`. Không cần gọi `harness-cli trace` thủ công.
-
-Stack commands: `docs/*_STACK.md` (theo framework đã chọn khi cài).
-
-## Yêu cầu
-
-- Node.js 18+
-- Claude Code CLI (`claude`)
-- RTK (recommended): `scripts/rtk-shell.sh`, `rtk-node.sh`, `rtk-python.sh`, `rtk-flutter.sh` — see `docs/TOKEN_EFFICIENCY.md`
-- `curl` (để download harness-cli khi cài vào dự án mới)
-
-## Cấu trúc file sau cài đặt
-
-```
+```text
 your-project/
-├── .claude/
-│   ├── agents/          # 11 agent definitions
-│   └── settings.json    # hooks config
+├── .claude/agents/          # pm, coder, reviewer, tester, …
+├── .cursor/                 # hooks, rules, subagents
 ├── scripts/
-│   ├── bin/harness-cli  # Rust CLI (gitignored, downloaded on install)
-│   ├── schema/          # SQLite migrations
-│   ├── hooks/           # 14 hook scripts
-│   ├── utils/           # atomic-write.js, kg-paths.js
-│   ├── hud/             # HUD components
-│   └── kg.js            # knowledge graph
-├── docs/
-│   ├── HARNESS.md
-│   ├── FEATURE_INTAKE.md
-│   ├── TRACE_SPEC.md
-│   ├── decisions/
-│   ├── stories/
-│   └── templates/
-├── kg/runtime/          # runtime state (gitignored)
-├── harness.db           # durable records (gitignored)
-├── .project-manager/
-│   ├── README.md
-│   └── tasks/
-└── AGENTS.md
+│   ├── bin/harness-cli      # gitignored — tải khi install
+│   ├── hooks/               # handoff, trace, verify, …
+│   └── schema/              # 001-init.sql, 002-story-verify.sql
+├── frameworks/<id>/
+│   └── profile.json         # lint_cmd, test_cmd (cho verify-story)
+├── docs/                    # HARNESS, FEATURE_INTAKE, *_STACK.md
+├── .project-manager/tasks/
+├── .harness-profile         # id framework
+├── harness.db               # gitignored
+└── AGENTS.md                # hướng dẫn agent
 ```
+
+---
+
+## Phát triển repo installer này
+
+Clone repo **ai-harness** (không phải thư mục app):
+
+```bash
+cargo build --release -p harness-cli   # nếu có Rust
+cp target/release/harness-cli scripts/bin/harness-cli
+bash scripts/verify-h4.sh
+node scripts/check-agent-parity.mjs
+```
+
+**Maturity:** H3 đạt, H4 thin slice — [docs/HARNESS_MATURITY.md](docs/HARNESS_MATURITY.md).
+
+---
+
+## Tài liệu quan trọng
+
+| Tài liệu | Nội dung |
+|----------|----------|
+| [docs/HARNESS.md](docs/HARNESS.md) | Mô hình task loop, trace |
+| [docs/FEATURE_INTAKE.md](docs/FEATURE_INTAKE.md) | Lane tiny/normal/high-risk |
+| [docs/HARNESS_VERIFICATION.md](docs/HARNESS_VERIFICATION.md) | Verify, `proof`, hooks |
+| [docs/CURSOR.md](docs/CURSOR.md) | Cursor parity |
+| [docs/TOKEN_EFFICIENCY.md](docs/TOKEN_EFFICIENCY.md) | RTK, MCP |
+| [scripts/README.md](scripts/README.md) | CLI + scripts chi tiết |
+| [docs/decisions/0006-hybrid-claude-code-harness.md](docs/decisions/0006-hybrid-claude-code-harness.md) | Vì sao hybrid |
+
+---
 
 ## Upstream
 
-Docs và CLI binary theo [harness-experimental](https://github.com/hoangnb24/harness-experimental). ADR hybrid: `docs/decisions/0006-hybrid-claude-code-harness.md`.
+CLI và nhiều doc theo [harness-experimental](https://github.com/hoangnb24/harness-experimental) (release [harness-cli-v0.1.7](https://github.com/hoangnb24/harness-experimental/tree/harness-cli-v0.1.7)). Repo **ai-harness** thêm: 12 framework, `install.sh`, Cursor layer, `verify-story.sh`, benchmark installer.
+
+---
+
+## Agents (trong dự án đã cài)
+
+| Agent | Vai trò |
+|-------|---------|
+| **pm** | Điều phối — không implement code |
+| **coder** | Mọi thay đổi code |
+| **spec-reviewer** | Đúng AC |
+| **reviewer** | Chất lượng code |
+| **tester** | Test + QA |
+| **debugger** | Khi kẹt ≥2 vòng |
+| **solution-architect** | High-risk / kiến trúc |
+| **explorer** | Khảo sát codebase |
+
+Định nghĩa: `.claude/agents/*.md` (Cursor sync qua `scripts/sync-cursor-agents.mjs`).
+
+---
+
+## Checklist “xong việc” cho agent
+
+| Lane | Trước khi stop session |
+|------|------------------------|
+| **tiny** | After-Work đủ field, Friction có tag hoặc `none` |
+| **normal** | Full pipeline + `Outcome: completed` → verify pass |
+| **high-risk** | + ADR `docs/decisions/` nếu cần |
+
+Xem block trong [templates/AGENTS.harness-block.md](templates/AGENTS.harness-block.md) (merge vào `AGENTS.md` khi cài).
