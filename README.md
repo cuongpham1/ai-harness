@@ -1,6 +1,6 @@
 # AI Harness — Bộ khung vận hành AI cho dự án phần mềm
 
-**Repository:** _(bạn sẽ gắn link GitHub tại đây)_
+**Repository:** [github.com/cuongpham1/ai-harness](https://github.com/cuongpham1/ai-harness)
 
 Repo này là **bộ cài đặt (installer)** — không phải ứng dụng chạy trực tiếp. Chạy `install.sh` để gắn quy trình agent, hooks, tài liệu và lớp dữ liệu bền (`harness.db`) vào **dự án đích** của bạn. Kết hợp [harness-experimental](https://github.com/hoangnb24/harness-experimental) (CLI, trace, maturity) với pipeline đa agent (Claude Code + Cursor).
 
@@ -44,7 +44,7 @@ Repo này là **bộ cài đặt (installer)** — không phải ứng dụng ch
 ### Cài vào dự án đích
 
 ```bash
-git clone <link-repo-ai-harness> ai-harness
+git clone https://github.com/cuongpham1/ai-harness.git ai-harness
 cd ai-harness
 
 bash install.sh --yes --framework nodejs --name "Tên dự án" /đường/dẫn/dự-án-của-bạn
