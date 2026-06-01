@@ -17,7 +17,11 @@ Target projects receive merged `AGENTS.md` from `templates/AGENTS.starter.md` + 
 ```bash
 bash install.sh --yes --framework nodejs --name "My API" /path/to/project
 scripts/bin/harness-cli query stats
+bash scripts/verify-story.sh          # H4 lane-aware proof
+bash scripts/verify-h4.sh             # H3 + parity + H4 dry-run
 ```
+
+**Done checklist:** tiny → After-Work only; normal → full pipeline + `verify-story` on completed; high-risk → + ADR. See [docs/HARNESS_VERIFICATION.md](docs/HARNESS_VERIFICATION.md).
 <!-- HARNESS:END -->
 
 ## Agent roster

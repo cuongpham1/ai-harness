@@ -22,7 +22,17 @@ scripts/bin/harness-cli intake --type change_request --summary "..." --lane norm
 scripts/bin/harness-cli trace --summary "..." --outcome completed
 ```
 
-**Task file = source of truth.** Append structured `### After-Work` to `.project-manager/tasks/*.md`; the Stop hook syncs to `harness.db` automatically.
+**Task file = source of truth.** Append structured `### After-Work` to `.project-manager/tasks/*.md`; Stop hooks sync trace + story to `harness.db` and run lane-aware verification.
+
+## Agent done checklist (H3/H4)
+
+| Lane | Before you stop |
+|------|-----------------|
+| **tiny** | `### After-Work` with **Done** (≥10 chars), **Outcome**, **Friction** |
+| **normal** | Above + full pipeline (coder → spec-reviewer → reviewer → tester); `Outcome: completed` triggers `verify-story` lint/test |
+| **high-risk** | Above + ADR in `docs/decisions/`; decision verify via harness-cli when applicable |
+
+Manual proof: `bash scripts/verify-story.sh` · Full gate: `bash scripts/verify-h4.sh` · See [docs/HARNESS_VERIFICATION.md](docs/HARNESS_VERIFICATION.md).
 
 ## Code change pipeline
 

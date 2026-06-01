@@ -46,6 +46,13 @@
         "command": "node scripts/hooks/cursor/stop-score-trace.mjs"
       },
       {
+        "command": "node scripts/hooks/cursor/stop-verify.mjs",
+        "loop_limit": 2
+      },
+      {
+        "command": "node scripts/hooks/cursor/stop-sync-story.mjs"
+      },
+      {
         "command": "node scripts/hooks/cursor/stop-checkpoint.mjs"
       }
     ]

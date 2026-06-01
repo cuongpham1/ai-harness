@@ -81,8 +81,11 @@ See [TRACE_SPEC.md](TRACE_SPEC.md) for trace quality tiers.
 Flow:
 
 ```text
-Agent appends After-Work → check-task-handoff validates → sync-harness-trace → harness.db
+Agent appends After-Work → check-task-handoff → sync-harness-trace → score-trace
+  → run-harness-verify (H4) → sync-harness-story → harness.db + proof report
 ```
+
+See [HARNESS_VERIFICATION.md](HARNESS_VERIFICATION.md) for lane-aware `verify-story` behavior.
 
 For cross-session story history, also use `docs/stories/` + `harness-cli story` on normal/high-risk work.
 

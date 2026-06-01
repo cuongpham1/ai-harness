@@ -40,6 +40,8 @@ bash scripts/install-harness.sh --merge --yes --directory /đường/dẫn/dự-
 
 ```bash
 scripts/bin/harness-cli init              # tạo harness.db
+scripts/bin/harness-cli migrate           # schema 002 (story verify_command)
+scripts/bin/harness-cli story verify <id> # chạy verify_command của story (CLI 0.1.7)
 scripts/bin/harness-cli query matrix      # trạng thái proof
 scripts/bin/harness-cli intake ...        # phân loại công việc
 scripts/bin/harness-cli trace ...         # ghi trace task
@@ -47,6 +49,8 @@ scripts/bin/harness-cli score-trace       # chấm chất lượng trace
 scripts/bin/harness-cli query friction    # xem friction patterns
 node scripts/friction-by-component.mjs    # group friction by component (H3)
 bash scripts/verify-h3.sh                 # verify H3 maturity
+bash scripts/verify-story.sh            # H4 lane-aware proof (active task, Stop hooks)
+bash scripts/verify-h4.sh                 # H3 + agent parity + H4 gates
 bash benchmark/run-harness.sh             # deterministic harness benchmark
 ```
 

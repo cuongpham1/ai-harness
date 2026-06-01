@@ -10,8 +10,11 @@ Harness work.
 
 ```bash
 scripts/bin/harness-cli init          # Create the database
+scripts/bin/harness-cli migrate       # Apply schema migrations (e.g. 002-story-verify)
 scripts/bin/harness-cli intake ...    # Record a feature intake classification
-scripts/bin/harness-cli story ...     # Add or update a story (test matrix row)
+scripts/bin/harness-cli story add ... # Add a story (optional --verify "cmd")
+scripts/bin/harness-cli story update ...  # Proof flags: --unit 1 --integration 1 (not yes/no)
+scripts/bin/harness-cli story verify <id>  # Run story verify_command (Phase 4 / v0.1.7+)
 scripts/bin/harness-cli decision ...  # Add a decision or run its verification
 scripts/bin/harness-cli backlog ...   # Add or close a backlog item
 scripts/bin/harness-cli trace ...     # Record an agent execution trace
@@ -22,10 +25,17 @@ scripts/bin/harness-cli migrate       # Apply pending schema migrations
 
 Run `scripts/bin/harness-cli help` or `scripts/bin/harness-cli query help` for full usage.
 
-The schema lives in `scripts/schema/` and is version-controlled. The database
-file (`harness.db`) is `.gitignore`d.
+The schema lives in `scripts/schema/` (`001-init.sql`, `002-story-verify.sql`) and is
+version-controlled. The database file (`harness.db`) is `.gitignore`d.
 
-Requires: the prebuilt Rust CLI at `scripts/bin/harness-cli`.
+**CLI version:** source and release pin **0.1.7** ([harness-experimental tag](https://github.com/hoangnb24/harness-experimental/tree/harness-cli-v0.1.7)). Rebuild locally:
+
+```bash
+cargo build --release -p harness-cli
+cp target/release/harness-cli scripts/bin/harness-cli
+```
+
+Requires: the prebuilt Rust CLI at `scripts/bin/harness-cli` (or a local build as above).
 
 ## H3 observability scripts
 
@@ -33,6 +43,9 @@ Requires: the prebuilt Rust CLI at `scripts/bin/harness-cli`.
 node scripts/friction-by-component.mjs       # group friction by harness component
 node scripts/friction-by-component.mjs --json  # JSON output for benchmark
 bash scripts/verify-h3.sh                      # full H3 maturity check
+bash scripts/verify-story.sh                   # H4 lane-aware lint/test for active task
+bash scripts/verify-h4.sh                      # H3 + agent parity + H4 dry-run
+node scripts/check-agent-parity.mjs            # CI: .claude vs .cursor agent bodies
 bash benchmark/run-harness.sh                  # deterministic harness benchmark
 node benchmark/compare.mjs baseline.jsonl current.jsonl
 ```

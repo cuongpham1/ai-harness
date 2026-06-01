@@ -7,11 +7,11 @@ use thiserror::Error;
 pub enum ParseHarnessValueError {
     #[error("unknown intake type '{0}'. Use: new spec, spec slice, change request, new initiative, maintenance request, or harness improvement")]
     InputType(String),
-    #[error("unknown lane '{0}'. Use: tiny, normal, or high-risk")]
+    #[error("unknown lane '{0}'. Use: tiny, normal, or high-risk. Use tiny instead of low.")]
     RiskLane(String),
     #[error("{0} must be an integer")]
     Integer(String),
-    #[error("{0} must be 0 or 1")]
+    #[error("{0} must be 0 or 1. Example: --unit 1 --integration 1 --e2e 0 --platform 0")]
     BoolFlag(String),
 }
 
@@ -86,6 +86,9 @@ impl FromStr for RiskLane {
     }
 }
 
+pub const RISK_LANE_HELP: &str =
+    "Accepted lanes: tiny, normal, high-risk. Use tiny instead of low.";
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct IntakeRecord {
     pub id: i64,
@@ -100,11 +103,18 @@ pub struct StoryMatrixRecord {
     pub id: String,
     pub title: String,
     pub status: String,
-    pub unit: String,
-    pub integration: String,
-    pub e2e: String,
-    pub platform: String,
+    pub unit: i64,
+    pub integration: i64,
+    pub e2e: i64,
+    pub platform: i64,
     pub evidence: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct StoryVerifyStatus {
+    pub id: String,
+    pub verify_command: Option<String>,
+    pub last_verified_result: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -425,6 +435,14 @@ pub fn yes_no(value: i64) -> String {
         "yes".to_owned()
     } else {
         "no".to_owned()
+    }
+}
+
+pub fn proof_display(value: i64, numeric: bool) -> String {
+    if numeric {
+        value.to_string()
+    } else {
+        yes_no(value)
     }
 }
 

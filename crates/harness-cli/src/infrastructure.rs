@@ -9,11 +9,11 @@ use thiserror::Error;
 use crate::application::{
     BacklogAddInput, BacklogCloseInput, BrownfieldImportResult, DecisionAddInput,
     DecisionVerifyResult, HarnessContext, InitResult, IntakeInput, MigrateResult, QueryTable,
-    StoryAddInput, StoryUpdateInput, TraceInput,
+    StoryAddInput, StoryUpdateInput, StoryVerifyResult, TraceInput,
 };
 use crate::domain::{
-    normalize_token, score_trace, yes_no, BacklogFilter, BacklogRecord, DecisionRecord,
-    FrictionRecord, HarnessStats, IntakeRecord, RiskLane, StoryMatrixRecord, TraceRecord,
+    normalize_token, score_trace, BacklogFilter, BacklogRecord, DecisionRecord, FrictionRecord,
+    HarnessStats, IntakeRecord, RiskLane, StoryMatrixRecord, StoryVerifyStatus, TraceRecord,
     TraceScoreResult, TraceScoreSource,
 };
 
@@ -27,8 +27,10 @@ pub enum HarnessInfraError {
     MissingSchema(String),
     #[error("brownfield import: missing {0}")]
     MissingBrownfieldPath(String),
-    #[error("decision {0} has no verify_command")]
+    #[error("decision {0} has no verify_command. Configure one with: harness-cli decision add --id {0} --title <title> --verify \"<command>\"")]
     MissingDecisionVerifyCommand(String),
+    #[error("story {0} has no verify_command. Configure one with: harness-cli story update --id {0} --verify \"<command>\"")]
+    MissingStoryVerifyCommand(String),
     #[error("story update: story '{0}' not found")]
     StoryNotFound(String),
     #[error("backlog close: backlog item '{0}' not found")]
@@ -52,12 +54,14 @@ pub trait HarnessRepository {
     fn record_intake(&self, input: IntakeInput) -> Result<i64>;
     fn add_story(&self, input: StoryAddInput) -> Result<()>;
     fn update_story(&self, input: StoryUpdateInput) -> Result<()>;
+    fn verify_story(&self, id: &str) -> Result<StoryVerifyResult>;
     fn add_decision(&self, input: DecisionAddInput) -> Result<()>;
     fn verify_decision(&self, id: &str) -> Result<DecisionVerifyResult>;
     fn add_backlog(&self, input: BacklogAddInput) -> Result<i64>;
     fn close_backlog(&self, input: BacklogCloseInput) -> Result<()>;
     fn record_trace(&self, input: TraceInput) -> Result<i64>;
     fn score_trace(&self, id: Option<i64>) -> Result<TraceScoreResult>;
+    fn story_verify_status(&self, id: &str) -> Result<StoryVerifyStatus>;
     fn query_matrix(&self) -> Result<Vec<StoryMatrixRecord>>;
     fn query_backlog(&self, filter: BacklogFilter) -> Result<Vec<BacklogRecord>>;
     fn query_decisions(&self) -> Result<Vec<DecisionRecord>>;
@@ -125,6 +129,22 @@ impl SqliteHarnessRepository {
         let schema = fs::read_to_string(schema_path)?;
         connection.execute_batch(&schema)?;
         Ok(())
+    }
+
+    fn apply_pending_migrations(
+        &self,
+        connection: &Connection,
+        current_version: i64,
+    ) -> Result<Vec<i64>> {
+        let mut applied = Vec::new();
+        for (version, path) in self.migration_files()? {
+            if version > current_version {
+                let sql = fs::read_to_string(path)?;
+                connection.execute_batch(&sql)?;
+                applied.push(version);
+            }
+        }
+        Ok(applied)
     }
 
     fn migration_files(&self) -> Result<Vec<(i64, PathBuf)>> {
@@ -363,6 +383,7 @@ impl HarnessRepository for SqliteHarnessRepository {
             let current = Self::schema_version(&connection).unwrap_or(0);
             if current == 0 {
                 self.apply_schema_v1(&connection)?;
+                self.apply_pending_migrations(&connection, 1)?;
                 return Ok(InitResult::MigratedExisting {
                     db_path: self.db_path.clone(),
                 });
@@ -376,6 +397,7 @@ impl HarnessRepository for SqliteHarnessRepository {
 
         let connection = self.open_or_create()?;
         self.apply_schema_v1(&connection)?;
+        self.apply_pending_migrations(&connection, 1)?;
         Ok(InitResult::Created {
             db_path: self.db_path.clone(),
         })
@@ -384,15 +406,7 @@ impl HarnessRepository for SqliteHarnessRepository {
     fn migrate(&self) -> Result<MigrateResult> {
         let connection = self.open_existing()?;
         let current_version = Self::schema_version(&connection).unwrap_or(0);
-        let mut applied = Vec::new();
-
-        for (version, path) in self.migration_files()? {
-            if version > current_version {
-                let sql = fs::read_to_string(path)?;
-                connection.execute_batch(&sql)?;
-                applied.push(version);
-            }
-        }
+        let applied = self.apply_pending_migrations(&connection, current_version)?;
 
         Ok(MigrateResult {
             current_version,
@@ -436,13 +450,14 @@ impl HarnessRepository for SqliteHarnessRepository {
     fn add_story(&self, input: StoryAddInput) -> Result<()> {
         let connection = self.open_existing()?;
         connection.execute(
-            "INSERT INTO story (id, title, risk_lane, contract_doc, notes)
-             VALUES (?1, ?2, ?3, ?4, ?5);",
+            "INSERT INTO story (id, title, risk_lane, contract_doc, verify_command, notes)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6);",
             params![
                 input.id,
                 input.title,
                 input.risk_lane.as_db_value(),
                 input.contract_doc,
+                input.verify_command,
                 input.notes,
             ],
         )?;
@@ -456,6 +471,7 @@ impl HarnessRepository for SqliteHarnessRepository {
             && input.integration.is_none()
             && input.e2e.is_none()
             && input.platform.is_none()
+            && input.verify_command.is_none()
         {
             return Err(HarnessInfraError::EmptyStoryUpdate);
         }
@@ -468,8 +484,9 @@ impl HarnessRepository for SqliteHarnessRepository {
                 unit_proof=COALESCE(?3, unit_proof),
                 integration_proof=COALESCE(?4, integration_proof),
                 e2e_proof=COALESCE(?5, e2e_proof),
-                platform_proof=COALESCE(?6, platform_proof)
-             WHERE id=?7;",
+                platform_proof=COALESCE(?6, platform_proof),
+                verify_command=COALESCE(?7, verify_command)
+             WHERE id=?8;",
             params![
                 input.status,
                 input.evidence,
@@ -477,6 +494,7 @@ impl HarnessRepository for SqliteHarnessRepository {
                 input.integration.map(|value| value.0),
                 input.e2e.map(|value| value.0),
                 input.platform.map(|value| value.0),
+                input.verify_command,
                 input.id,
             ],
         )?;
@@ -485,6 +503,45 @@ impl HarnessRepository for SqliteHarnessRepository {
             return Err(HarnessInfraError::StoryNotFound(input.id));
         }
         Ok(())
+    }
+
+    fn verify_story(&self, id: &str) -> Result<StoryVerifyResult> {
+        let connection = self.open_existing()?;
+        let verify_command = connection
+            .query_row(
+                "SELECT verify_command FROM story WHERE id=?1;",
+                params![id],
+                |row| row.get::<_, Option<String>>(0),
+            )
+            .optional()?
+            .flatten()
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| HarnessInfraError::MissingStoryVerifyCommand(id.to_owned()))?;
+
+        let output = Command::new("sh")
+            .arg("-c")
+            .arg(&verify_command)
+            .current_dir(&self.repo_root)
+            .output()?;
+        let result = if output.status.success() {
+            "pass"
+        } else {
+            "fail"
+        }
+        .to_owned();
+        connection.execute(
+            "UPDATE story
+             SET last_verified_at=datetime('now'), last_verified_result=?1
+             WHERE id=?2;",
+            params![result, id],
+        )?;
+
+        Ok(StoryVerifyResult {
+            command: verify_command,
+            stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+            result,
+        })
     }
 
     fn add_decision(&self, input: DecisionAddInput) -> Result<()> {
@@ -663,6 +720,24 @@ impl HarnessRepository for SqliteHarnessRepository {
         Ok(score_trace(source))
     }
 
+    fn story_verify_status(&self, id: &str) -> Result<StoryVerifyStatus> {
+        let connection = self.open_existing()?;
+        connection
+            .query_row(
+                "SELECT id, verify_command, last_verified_result FROM story WHERE id=?1;",
+                params![id],
+                |row| {
+                    Ok(StoryVerifyStatus {
+                        id: row.get(0)?,
+                        verify_command: row.get(1)?,
+                        last_verified_result: row.get(2)?,
+                    })
+                },
+            )
+            .optional()?
+            .ok_or_else(|| HarnessInfraError::StoryNotFound(id.to_owned()))
+    }
+
     fn query_matrix(&self) -> Result<Vec<StoryMatrixRecord>> {
         let connection = self.open_existing()?;
         let mut statement = connection.prepare(
@@ -675,10 +750,10 @@ impl HarnessRepository for SqliteHarnessRepository {
                 id: row.get(0)?,
                 title: row.get(1)?,
                 status: row.get(2)?,
-                unit: yes_no(row.get::<_, i64>(3)?),
-                integration: yes_no(row.get::<_, i64>(4)?),
-                e2e: yes_no(row.get::<_, i64>(5)?),
-                platform: yes_no(row.get::<_, i64>(6)?),
+                unit: row.get(3)?,
+                integration: row.get(4)?,
+                e2e: row.get(5)?,
+                platform: row.get(6)?,
                 evidence: row.get(7)?,
             })
         })?;
@@ -1142,6 +1217,14 @@ mod tests {
         (temp_dir, repository)
     }
 
+    fn story_columns(connection: &Connection) -> Vec<String> {
+        let mut statement = connection.prepare("PRAGMA table_info(story);").unwrap();
+        let rows = statement
+            .query_map([], |row| row.get::<_, String>(1))
+            .unwrap();
+        rows.collect::<std::result::Result<Vec<_>, _>>().unwrap()
+    }
+
     #[test]
     fn init_creates_database_and_schema() {
         let (_temp_dir, repository) = test_repository();
@@ -1150,6 +1233,35 @@ mod tests {
 
         assert!(matches!(result, InitResult::Created { .. }));
         assert_eq!(repository.query_stats().unwrap().intakes, 0);
+        let connection = repository.open_existing().unwrap();
+        let schema_version = SqliteHarnessRepository::schema_version(&connection).unwrap();
+        assert_eq!(schema_version, 2);
+        let story_columns = story_columns(&connection);
+        assert!(story_columns.contains(&"verify_command".to_owned()));
+        assert!(story_columns.contains(&"last_verified_at".to_owned()));
+        assert!(story_columns.contains(&"last_verified_result".to_owned()));
+    }
+
+    #[test]
+    fn migrate_applies_story_verify_columns_to_existing_database() {
+        let (_temp_dir, repository) = test_repository();
+        let connection = repository.open_or_create().unwrap();
+        repository.apply_schema_v1(&connection).unwrap();
+        drop(connection);
+
+        let result = repository.migrate().unwrap();
+
+        assert_eq!(result.current_version, 1);
+        assert_eq!(result.applied, vec![2]);
+        let connection = repository.open_existing().unwrap();
+        assert_eq!(
+            SqliteHarnessRepository::schema_version(&connection).unwrap(),
+            2
+        );
+        let story_columns = story_columns(&connection);
+        assert!(story_columns.contains(&"verify_command".to_owned()));
+        assert!(story_columns.contains(&"last_verified_at".to_owned()));
+        assert!(story_columns.contains(&"last_verified_result".to_owned()));
     }
 
     #[test]
@@ -1227,6 +1339,134 @@ mod tests {
     }
 
     #[test]
+    fn story_add_update_and_verify_status_store_verify_command() {
+        let (_temp_dir, repository) = test_repository();
+        repository.init().unwrap();
+
+        repository
+            .add_story(StoryAddInput {
+                id: "US-VERIFY".to_owned(),
+                title: "Verify command story".to_owned(),
+                risk_lane: RiskLane::Normal,
+                contract_doc: None,
+                verify_command: Some("echo ok".to_owned()),
+                notes: None,
+            })
+            .unwrap();
+        assert_eq!(
+            repository
+                .story_verify_status("US-VERIFY")
+                .unwrap()
+                .verify_command
+                .as_deref(),
+            Some("echo ok")
+        );
+
+        repository
+            .update_story(StoryUpdateInput {
+                id: "US-VERIFY".to_owned(),
+                status: None,
+                evidence: None,
+                unit: None,
+                integration: None,
+                e2e: None,
+                platform: None,
+                verify_command: Some("npm test".to_owned()),
+            })
+            .unwrap();
+
+        assert_eq!(
+            repository
+                .story_verify_status("US-VERIFY")
+                .unwrap()
+                .verify_command
+                .as_deref(),
+            Some("npm test")
+        );
+    }
+
+    #[test]
+    fn story_verify_records_pass_fail_and_missing_command() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let repo_root = temp_dir.path().join("repo");
+        fs::create_dir_all(&repo_root).unwrap();
+        let schema_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .ancestors()
+            .nth(2)
+            .unwrap()
+            .to_path_buf()
+            .join("scripts/schema");
+        let repository = SqliteHarnessRepository::new(
+            repo_root.clone(),
+            temp_dir.path().join("harness.db"),
+            schema_root,
+        );
+        repository.init().unwrap();
+
+        let pwd_output = temp_dir.path().join("story-verify-pwd.txt");
+        repository
+            .add_story(StoryAddInput {
+                id: "US-PASS".to_owned(),
+                title: "Passing story".to_owned(),
+                risk_lane: RiskLane::Normal,
+                contract_doc: None,
+                verify_command: Some(format!("pwd > {}", pwd_output.display())),
+                notes: None,
+            })
+            .unwrap();
+        let pass = repository.verify_story("US-PASS").unwrap();
+        assert_eq!(pass.result, "pass");
+        assert_eq!(
+            fs::canonicalize(fs::read_to_string(pwd_output).unwrap().trim()).unwrap(),
+            fs::canonicalize(repo_root).unwrap()
+        );
+        assert_eq!(
+            repository
+                .story_verify_status("US-PASS")
+                .unwrap()
+                .last_verified_result
+                .as_deref(),
+            Some("pass")
+        );
+
+        repository
+            .add_story(StoryAddInput {
+                id: "US-FAIL".to_owned(),
+                title: "Failing story".to_owned(),
+                risk_lane: RiskLane::Normal,
+                contract_doc: None,
+                verify_command: Some("exit 1".to_owned()),
+                notes: None,
+            })
+            .unwrap();
+        let fail = repository.verify_story("US-FAIL").unwrap();
+        assert_eq!(fail.result, "fail");
+        assert_eq!(
+            repository
+                .story_verify_status("US-FAIL")
+                .unwrap()
+                .last_verified_result
+                .as_deref(),
+            Some("fail")
+        );
+
+        repository
+            .add_story(StoryAddInput {
+                id: "US-MISSING".to_owned(),
+                title: "Missing command story".to_owned(),
+                risk_lane: RiskLane::Normal,
+                contract_doc: None,
+                verify_command: None,
+                notes: None,
+            })
+            .unwrap();
+        assert!(matches!(
+            repository.verify_story("US-MISSING"),
+            Err(HarnessInfraError::MissingStoryVerifyCommand(id)) if id == "US-MISSING"
+        ));
+    }
+
+    #[test]
     fn story_backlog_trace_and_queries_work() {
         let (_temp_dir, repository) = test_repository();
         repository.init().unwrap();
@@ -1237,6 +1477,7 @@ mod tests {
                 title: "Test story".to_owned(),
                 risk_lane: RiskLane::Normal,
                 contract_doc: None,
+                verify_command: None,
                 notes: None,
             })
             .unwrap();
@@ -1249,9 +1490,10 @@ mod tests {
                 integration: None,
                 e2e: None,
                 platform: None,
+                verify_command: None,
             })
             .unwrap();
-        assert_eq!(repository.query_matrix().unwrap()[0].unit, "yes");
+        assert_eq!(repository.query_matrix().unwrap()[0].unit, 1);
 
         let backlog_id = repository
             .add_backlog(BacklogAddInput {
@@ -1497,9 +1739,9 @@ implemented
         assert_eq!(matrix[0].id, "US-010");
         assert_eq!(matrix[0].title, "docs/product/tasks.md");
         assert_eq!(matrix[0].status, "implemented");
-        assert_eq!(matrix[0].unit, "yes");
-        assert_eq!(matrix[0].integration, "no");
-        assert_eq!(matrix[0].platform, "yes");
+        assert_eq!(matrix[0].unit, 1);
+        assert_eq!(matrix[0].integration, 0);
+        assert_eq!(matrix[0].platform, 1);
 
         let decisions = repository.query_decisions().unwrap();
         assert_eq!(decisions[0].id, "0007-test-decision");

@@ -11,14 +11,15 @@ use crate::application::{
     StoryUpdateInput, TraceInput,
 };
 use crate::domain::{
-    parse_optional_integer, BacklogFilter, BacklogRecord, BoolFlag, CsvList, DecisionRecord,
-    FrictionRecord, HarnessStats, InputType, IntakeRecord, RiskLane, StoryMatrixRecord,
-    TraceQualityTier, TraceRecord, TraceScoreResult,
+    parse_optional_integer, proof_display, BacklogFilter, BacklogRecord, BoolFlag, CsvList,
+    DecisionRecord, FrictionRecord, HarnessStats, InputType, IntakeRecord, RiskLane,
+    StoryMatrixRecord, TraceQualityTier, TraceRecord, TraceScoreResult, RISK_LANE_HELP,
 };
 
 #[derive(Parser, Debug)]
-#[command(name = "harness")]
+#[command(name = "harness-cli")]
 #[command(about = "durable layer for the project harness", long_about = None)]
+#[command(version)]
 pub struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -49,12 +50,13 @@ enum Command {
 }
 
 #[derive(Args, Debug)]
+#[command(after_help = RISK_LANE_HELP)]
 struct IntakeArgs {
     #[arg(long = "type")]
     input_type: String,
     #[arg(long)]
     summary: String,
-    #[arg(long)]
+    #[arg(long, value_name = "tiny|normal|high-risk")]
     lane: String,
     #[arg(long)]
     flags: Option<String>,
@@ -86,8 +88,19 @@ struct StoryArgs {
 
 #[derive(Subcommand, Debug)]
 enum StoryAction {
+    #[command(after_help = RISK_LANE_HELP)]
     Add(StoryAddArgs),
+    #[command(
+        after_help = "Proof flags use numeric booleans: --unit 1 --integration 1 --e2e 0 --platform 0. Do not use yes/no."
+    )]
     Update(StoryUpdateArgs),
+    #[command(
+        after_help = "story verify only accepts the story id. Configure proof with story add/update --verify, then record proof flags with story update."
+    )]
+    Verify {
+        /// Story id to verify.
+        id: String,
+    },
 }
 
 #[derive(Args, Debug)]
@@ -96,10 +109,12 @@ struct StoryAddArgs {
     id: String,
     #[arg(long)]
     title: String,
-    #[arg(long)]
+    #[arg(long, value_name = "tiny|normal|high-risk")]
     lane: String,
     #[arg(long)]
     contract: Option<String>,
+    #[arg(long)]
+    verify: Option<String>,
     #[arg(long)]
     notes: Option<String>,
 }
@@ -112,14 +127,16 @@ struct StoryUpdateArgs {
     status: Option<String>,
     #[arg(long)]
     evidence: Option<String>,
-    #[arg(long)]
+    #[arg(long, value_name = "0|1")]
     unit: Option<String>,
-    #[arg(long)]
+    #[arg(long, value_name = "0|1")]
     integration: Option<String>,
-    #[arg(long)]
+    #[arg(long, value_name = "0|1")]
     e2e: Option<String>,
-    #[arg(long)]
+    #[arg(long, value_name = "0|1")]
     platform: Option<String>,
+    #[arg(long)]
+    verify: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -160,6 +177,7 @@ struct BacklogArgs {
 
 #[derive(Subcommand, Debug)]
 enum BacklogAction {
+    #[command(after_help = RISK_LANE_HELP)]
     Add(BacklogAddArgs),
     Close(BacklogCloseArgs),
 }
@@ -174,7 +192,7 @@ struct BacklogAddArgs {
     pain: Option<String>,
     #[arg(long)]
     suggestion: Option<String>,
-    #[arg(long)]
+    #[arg(long, value_name = "tiny|normal|high-risk")]
     risk: Option<String>,
     #[arg(long)]
     predicted: Option<String>,
@@ -238,6 +256,13 @@ struct QueryArgs {
 }
 
 #[derive(Args, Debug)]
+struct MatrixQueryArgs {
+    /// Render proof flags as CLI input values, 1 and 0, instead of yes and no.
+    #[arg(long)]
+    numeric: bool,
+}
+
+#[derive(Args, Debug)]
 struct BacklogQueryArgs {
     /// Show only proposed and accepted backlog items.
     #[arg(long, conflicts_with = "closed")]
@@ -250,7 +275,7 @@ struct BacklogQueryArgs {
 #[derive(Subcommand, Debug)]
 enum QueryView {
     /// Test matrix.
-    Matrix,
+    Matrix(MatrixQueryArgs),
     /// Harness improvement proposals.
     Backlog(BacklogQueryArgs),
     /// Decision records.
@@ -309,6 +334,7 @@ pub fn run(cli: Cli) -> Result<(), InterfaceError> {
                     title: args.title,
                     risk_lane: RiskLane::from_str(&args.lane)?,
                     contract_doc: args.contract,
+                    verify_command: args.verify,
                     notes: args.notes,
                 })?;
                 println!("Story {} added.", args.id);
@@ -325,8 +351,19 @@ pub fn run(cli: Cli) -> Result<(), InterfaceError> {
                     )?,
                     e2e: parse_optional_bool("story update: --e2e", args.e2e)?,
                     platform: parse_optional_bool("story update: --platform", args.platform)?,
+                    verify_command: args.verify,
                 })?;
                 println!("Story {} updated.", args.id);
+            }
+            StoryAction::Verify { id } => {
+                let result = service.verify_story(&id)?;
+                println!("Running: {}", result.command);
+                print!("{}", result.stdout);
+                print!("{}", result.stderr);
+                println!("Story {id} verification: {}", result.result);
+                if result.result == "fail" {
+                    std::process::exit(1);
+                }
             }
         },
         Command::Decision(args) => match args.action {
@@ -346,6 +383,9 @@ pub fn run(cli: Cli) -> Result<(), InterfaceError> {
                 let result = service.verify_decision(&id)?;
                 println!("Running: {}", result.command);
                 println!("Decision {id} verification: {}", result.result);
+                if result.result == "fail" {
+                    std::process::exit(1);
+                }
             }
         },
         Command::Backlog(args) => match args.action {
@@ -377,6 +417,7 @@ pub fn run(cli: Cli) -> Result<(), InterfaceError> {
             }
         },
         Command::Trace(args) => {
+            let story_id = args.story.clone();
             let id = service.record_trace(TraceInput {
                 task_summary: args.summary,
                 intake_id: parse_optional_integer("trace: --intake", args.intake)?,
@@ -394,6 +435,11 @@ pub fn run(cli: Cli) -> Result<(), InterfaceError> {
                 errors: CsvList::from_optional(args.errors),
             })?;
             println!("Trace #{id} recorded.");
+            let result = service.score_trace(Some(id))?;
+            print_trace_score(&result, false);
+            if let Some(story_id) = story_id {
+                print_story_verify_warning(&service, &story_id)?;
+            }
         }
         Command::ScoreTrace(args) => {
             let id = parse_optional_integer("score-trace: --id", args.id)?;
@@ -404,7 +450,7 @@ pub fn run(cli: Cli) -> Result<(), InterfaceError> {
             }
         }
         Command::Query(args) => match args.view {
-            QueryView::Matrix => print_matrix(&service.query_matrix()?),
+            QueryView::Matrix(args) => print_matrix(&service.query_matrix()?, args.numeric),
             QueryView::Backlog(args) => {
                 print_backlog(&service.query_backlog(backlog_filter(&args))?)
             }
@@ -473,6 +519,27 @@ fn print_trace_score(result: &TraceScoreResult, latest: bool) {
     );
 }
 
+fn print_story_verify_warning(
+    service: &HarnessService,
+    story_id: &str,
+) -> Result<(), InterfaceError> {
+    let status = service.story_verify_status(story_id)?;
+    let has_command = status
+        .verify_command
+        .as_deref()
+        .map(str::trim)
+        .is_some_and(|value| !value.is_empty());
+    if has_command && status.last_verified_result.as_deref() != Some("pass") {
+        println!();
+        println!(
+            "Warning: Story {} has verify_command but verification has not passed.",
+            status.id
+        );
+        println!("Run: harness-cli story verify {}", status.id);
+    }
+    Ok(())
+}
+
 fn print_missing_fields(label: &str, tier: TraceQualityTier, fields: &[String]) {
     if fields.is_empty() {
         return;
@@ -518,7 +585,7 @@ fn print_init_result(result: InitResult) {
     match result {
         InitResult::Created { db_path } => {
             println!("Creating harness database at {}", db_path.display());
-            println!("Schema version 1 applied.");
+            println!("Schema applied.");
         }
         InitResult::Existing { db_path, version } => {
             println!("Database already exists at {}", db_path.display());
@@ -526,8 +593,8 @@ fn print_init_result(result: InitResult) {
         }
         InitResult::MigratedExisting { db_path } => {
             println!("Database already exists at {}", db_path.display());
-            println!("No schema version found. Applying schema version 1.");
-            println!("Schema version 1 applied.");
+            println!("No schema version found. Applying schema.");
+            println!("Schema applied.");
         }
     }
 }
@@ -562,7 +629,7 @@ fn resolve_context() -> Result<HarnessContext, InterfaceError> {
     })
 }
 
-fn print_matrix(records: &[StoryMatrixRecord]) {
+fn print_matrix(records: &[StoryMatrixRecord], numeric: bool) {
     let rows = records
         .iter()
         .map(|record| {
@@ -570,10 +637,10 @@ fn print_matrix(records: &[StoryMatrixRecord]) {
                 record.id.clone(),
                 record.title.clone(),
                 record.status.clone(),
-                record.unit.clone(),
-                record.integration.clone(),
-                record.e2e.clone(),
-                record.platform.clone(),
+                proof_display(record.unit, numeric),
+                proof_display(record.integration, numeric),
+                proof_display(record.e2e, numeric),
+                proof_display(record.platform, numeric),
                 record.evidence.clone().unwrap_or_default(),
             ]
         })
@@ -781,5 +848,70 @@ mod tests {
     #[test]
     fn cli_definition_is_valid() {
         Cli::command().debug_assert();
+    }
+
+    #[test]
+    fn story_help_documents_proof_command_shape() {
+        let mut command = Cli::command();
+        let story = command.find_subcommand_mut("story").unwrap();
+
+        let update_help = story
+            .find_subcommand_mut("update")
+            .unwrap()
+            .render_long_help()
+            .to_string();
+        assert!(update_help.contains("--unit <0|1>"));
+        assert!(update_help.contains("--integration <0|1>"));
+        assert!(update_help.contains("Proof flags use numeric booleans"));
+
+        let verify_help = story
+            .find_subcommand_mut("verify")
+            .unwrap()
+            .render_long_help()
+            .to_string();
+        assert!(verify_help.contains("story verify only accepts the story id"));
+        assert!(verify_help.contains("Configure proof with story add/update --verify"));
+    }
+
+    #[test]
+    fn command_help_documents_lane_values_and_version() {
+        let mut command = Cli::command();
+        assert!(command.render_long_help().to_string().contains("--version"));
+
+        let intake_help = command
+            .find_subcommand_mut("intake")
+            .unwrap()
+            .render_long_help()
+            .to_string();
+        assert!(intake_help.contains("--lane <tiny|normal|high-risk>"));
+        assert!(intake_help.contains("Use tiny instead of low"));
+
+        let story_add_help = command
+            .find_subcommand_mut("story")
+            .unwrap()
+            .find_subcommand_mut("add")
+            .unwrap()
+            .render_long_help()
+            .to_string();
+        assert!(story_add_help.contains("--lane <tiny|normal|high-risk>"));
+
+        let backlog_add_help = command
+            .find_subcommand_mut("backlog")
+            .unwrap()
+            .find_subcommand_mut("add")
+            .unwrap()
+            .render_long_help()
+            .to_string();
+        assert!(backlog_add_help.contains("--risk <tiny|normal|high-risk>"));
+        assert!(backlog_add_help.contains("Accepted lanes"));
+
+        let matrix_help = command
+            .find_subcommand_mut("query")
+            .unwrap()
+            .find_subcommand_mut("matrix")
+            .unwrap()
+            .render_long_help()
+            .to_string();
+        assert!(matrix_help.contains("--numeric"));
     }
 }

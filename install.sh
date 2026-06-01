@@ -15,6 +15,14 @@ FRAMEWORK_ARG=""
 NAME_ARG=""
 TARGET=""
 
+# Allowlist framework ids (prevents path traversal via --framework)
+is_valid_framework() {
+  local id="$1"
+  [[ -z "$id" || "$id" == "generic" ]] && return 0
+  [[ "$id" =~ ^[a-z][a-z0-9_-]*$ ]] || return 1
+  [[ -f "$HARNESS_DIR/frameworks/$id/profile.json" ]]
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --yes|-y) YES=1; shift ;;
@@ -263,6 +271,13 @@ install_framework() {
     fi
   fi
 
+  # Copy profile for H4 verify-story (lint_cmd / test_cmd on target project)
+  mkdir -p "$target/frameworks/$framework"
+  if [[ -f "$fw_dir/profile.json" ]]; then
+    cp "$fw_dir/profile.json" "$target/frameworks/$framework/profile.json"
+    echo "  ✓ frameworks/$framework/profile.json (verify commands)"
+  fi
+
   # Write .harness-profile
   echo "$framework" > "$target/.harness-profile"
   echo "  ✓ .harness-profile ($framework)"
@@ -296,6 +311,10 @@ if [[ -n "$DETECTED_FRAMEWORK" ]]; then
   echo "  Auto-detected: $DETECTED_FRAMEWORK"
 fi
 if [[ -n "$FRAMEWORK_ARG" ]]; then
+  if ! is_valid_framework "$FRAMEWORK_ARG"; then
+    echo "Error: invalid --framework '$FRAMEWORK_ARG' (no frameworks/$FRAMEWORK_ARG/profile.json)" >&2
+    exit 1
+  fi
   FRAMEWORK="$FRAMEWORK_ARG"
   echo "  Framework (forced): $FRAMEWORK"
 else
@@ -368,6 +387,10 @@ copy_file "scripts/harness-cli-release-tag"
 copy_file "scripts/merge-agents-md.sh"
 copy_file "scripts/friction-by-component.mjs"
 copy_file "scripts/verify-h3.sh"
+copy_file "scripts/verify-h4.sh"
+copy_file "scripts/verify-story.sh"
+copy_file "scripts/check-agent-parity.mjs"
+copy_file "docs/HARNESS_VERIFICATION.md"
 copy_file "scripts/rtk-shell.sh"
 copy_file "scripts/rtk-node.sh"
 copy_file "scripts/rtk-python.sh"
@@ -378,6 +401,8 @@ copy_dir "docs"
 copy_dir "benchmark"
 chmod +x "$TARGET/scripts/merge-agents-md.sh" 2>/dev/null || true
 chmod +x "$TARGET/scripts/verify-h3.sh" 2>/dev/null || true
+chmod +x "$TARGET/scripts/verify-h4.sh" 2>/dev/null || true
+chmod +x "$TARGET/scripts/verify-story.sh" 2>/dev/null || true
 chmod +x "$TARGET/scripts/rtk-shell.sh" 2>/dev/null || true
 chmod +x "$TARGET/scripts/rtk-node.sh" 2>/dev/null || true
 chmod +x "$TARGET/scripts/rtk-python.sh" 2>/dev/null || true
@@ -387,6 +412,32 @@ chmod +x "$TARGET/scripts/install-harness.sh" 2>/dev/null || true
 bash "$HARNESS_DIR/scripts/merge-agents-md.sh" "$HARNESS_DIR" "$TARGET"
 
 # Harness CLI (durable layer)
+sha256_file() {
+  local file="$1"
+  if command -v shasum &>/dev/null; then
+    shasum -a 256 "$file" | awk '{print $1}'
+  elif command -v sha256sum &>/dev/null; then
+    sha256sum "$file" | awk '{print $1}'
+  else
+    echo ""
+  fi
+}
+
+build_harness_cli_from_source() {
+  local cli_dst="$1"
+  if ! command -v cargo &>/dev/null || [[ ! -f "$HARNESS_DIR/Cargo.toml" ]]; then
+    return 1
+  fi
+  echo "  Building harness-cli from source (cargo)..."
+  (cd "$HARNESS_DIR" && cargo build --release -q) || return 1
+  local built="$HARNESS_DIR/target/release/harness-cli"
+  [[ -x "$built" ]] || return 1
+  cp "$built" "$cli_dst"
+  chmod +x "$cli_dst"
+  echo "  ✓ scripts/bin/harness-cli (built from source)"
+  return 0
+}
+
 install_harness_cli() {
   local cli_dst="$TARGET/scripts/bin/harness-cli"
   mkdir -p "$TARGET/scripts/bin"
@@ -400,31 +451,44 @@ install_harness_cli() {
 
   local tag
   tag="$(cat "$HARNESS_DIR/scripts/harness-cli-release-tag" 2>/dev/null || echo harness-cli-v0.1.7)"
-  local arch platform
+  local arch platform os_name
   arch="$(uname -m)"
-  case "$(uname -s)" in
+  os_name="$(uname -s)"
+  case "$os_name" in
     Darwin) [[ "$arch" == "arm64" ]] && platform="macos-arm64" || platform="macos-x64" ;;
     Linux)  [[ "$arch" == "aarch64" || "$arch" == "arm64" ]] && platform="linux-arm64" || platform="linux-x64" ;;
-    *) echo "  ⚠ Unsupported platform for harness-cli download"; return ;;
+    *)
+      echo "  ⚠ Unsupported OS for harness-cli download: $os_name ($arch)" >&2
+      echo "    Supported: macOS (arm64/x64), Linux (x64/arm64). Try: cargo build --release in installer repo." >&2
+      build_harness_cli_from_source "$cli_dst" && return
+      return
+      ;;
   esac
   local base="https://github.com/hoangnb24/harness-experimental/releases/download/${tag}"
   if command -v curl &>/dev/null; then
-    curl -fsSL "$base/harness-cli-${platform}" -o "$cli_dst"
-    curl -fsSL "$base/harness-cli-${platform}.sha256" -o /tmp/harness-cli.sha256.$$
-    local expected actual
-    expected="$(awk '{print $1}' /tmp/harness-cli.sha256.$$)"
-    actual="$(shasum -a 256 "$cli_dst" | awk '{print $1}')"
-    rm -f /tmp/harness-cli.sha256.$$
-    if [[ "$expected" == "$actual" ]]; then
-      chmod +x "$cli_dst"
-      echo "  ✓ scripts/bin/harness-cli (downloaded $tag)"
-    else
+    if curl -fsSL "$base/harness-cli-${platform}" -o "$cli_dst" \
+      && curl -fsSL "$base/harness-cli-${platform}.sha256" -o /tmp/harness-cli.sha256.$$; then
+      local expected actual
+      expected="$(awk '{print $1}' /tmp/harness-cli.sha256.$$)"
+      actual="$(sha256_file "$cli_dst")"
+      rm -f /tmp/harness-cli.sha256.$$
+      if [[ -z "$actual" ]]; then
+        echo "  ⚠ shasum/sha256sum not found — cannot verify download" >&2
+        rm -f "$cli_dst"
+      elif [[ -n "$expected" && "$expected" == "$actual" ]]; then
+        chmod +x "$cli_dst"
+        echo "  ✓ scripts/bin/harness-cli (downloaded $tag, checksum OK)"
+        return
+      fi
       rm -f "$cli_dst"
-      echo "  ⚠ harness-cli checksum mismatch — skipped"
+      echo "  ⚠ harness-cli checksum mismatch for $tag ($platform)" >&2
+    else
+      echo "  ⚠ harness-cli download failed ($tag / $platform)" >&2
     fi
   else
-    echo "  ⚠ curl not found — harness-cli not installed"
+    echo "  ⚠ curl not found — cannot download harness-cli" >&2
   fi
+  build_harness_cli_from_source "$cli_dst" || echo "  ⚠ harness-cli not installed (download/build failed)" >&2
 }
 
 echo ""
@@ -433,6 +497,7 @@ install_harness_cli
 
 if [[ -x "$TARGET/scripts/bin/harness-cli" ]]; then
   (cd "$TARGET" && scripts/bin/harness-cli init) && echo "  ✓ harness.db initialized"
+  (cd "$TARGET" && scripts/bin/harness-cli migrate 2>/dev/null) && echo "  ✓ harness.db migrations applied" || true
   (cd "$TARGET" && scripts/bin/harness-cli import brownfield 2>/dev/null) && echo "  ✓ harness.db seeded from docs (brownfield import)" || true
 fi
 
@@ -452,11 +517,19 @@ echo "  ✓ kg/runtime/ created"
 echo "  ✓ kg/traces/ created"
 echo "  ✓ .project-manager/tasks/ created"
 
-# Write .project-manager/README.md from template
-sed "s/PROJECT_NAME_PLACEHOLDER/$PROJECT_NAME/g" \
-  "$HARNESS_DIR/.project-manager/README.md.template" \
-  > "$TARGET/.project-manager/README.md" 2>/dev/null || \
+# Write .project-manager/README.md from template (safe replace — no sed injection)
+if command -v python3 &>/dev/null; then
+  python3 -c "
+from pathlib import Path
+import sys
+src = Path(sys.argv[1])
+dst = Path(sys.argv[2])
+name = sys.argv[3]
+dst.write_text(src.read_text(encoding='utf-8').replace('PROJECT_NAME_PLACEHOLDER', name), encoding='utf-8')
+" "$HARNESS_DIR/.project-manager/README.md.template" "$TARGET/.project-manager/README.md" "$PROJECT_NAME"
+else
   cp "$HARNESS_DIR/.project-manager/README.md.template" "$TARGET/.project-manager/README.md"
+fi
 echo "  ✓ .project-manager/README.md"
 
 # .gitignore additions

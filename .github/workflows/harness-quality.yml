@@ -1,0 +1,43 @@
+name: Harness Quality
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Quality gates
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run CLI tests
+        run: cargo test --workspace
+
+      - name: Check shell scripts
+        run: |
+          bash -n install.sh
+          bash -n scripts/install-harness.sh
+          bash -n scripts/verify-h3.sh
+          bash -n scripts/verify-h4.sh
+          bash -n scripts/verify-story.sh
+
+      - name: Agent parity (Claude vs Cursor)
+        run: node scripts/check-agent-parity.mjs
+
+      - name: verify-story dry-run
+        run: bash scripts/verify-story.sh --dry-run
+
+      - name: Build harness-cli smoke
+        run: |
+          cargo build --release -q -p harness-cli
+          ./target/release/harness-cli --help
+          ./target/release/harness-cli score-trace --help

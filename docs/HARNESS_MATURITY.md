@@ -200,8 +200,10 @@ Benchmark indicators:
 
 Current status:
 
-- Not achieved. Current verification is manual through commands and story proof
-  fields.
+- **Thin slice achieved.** `scripts/verify-story.sh`, Stop hook `run-harness-verify.mjs`,
+  `scripts/verify-h4.sh`, and [HARNESS_VERIFICATION.md](HARNESS_VERIFICATION.md) provide
+  lane-aware lint/test + story proof updates. Full batch proof for every story row and
+  generic multi-stack CI matrices remain future work.
 
 Activated responsibilities:
 
@@ -259,7 +261,7 @@ Activated responsibilities:
 | H1 | Achieved | `AGENTS.md`, `docs/HARNESS.md`, `docs/FEATURE_INTAKE.md`, `docs/ARCHITECTURE.md`, `docs/templates/*`, and `docs/TEST_MATRIX.md` exist. |
 | H2 | Achieved | `scripts/bin/harness-cli`, `scripts/schema/001-init.sql`, durable story records, `docs/HARNESS_COMPONENTS.md`, `docs/HARNESS_MATURITY.md`, `docs/TRACE_SPEC.md`, and `docs/CONTEXT_RULES.md` define the Phase 2 surface. |
 | H3 | Achieved | `score-trace`, `friction-by-component`, `benchmark/compare.mjs` attribution, backlog outcome loop, `scripts/verify-h3.sh`. |
-| H4 | Not achieved | No generic verification runner or batch proof updater exists. |
+| H4 | Thin slice achieved | `verify-story.sh`, story sync hook, `verify-h4.sh`, agent parity CI. |
 | H5 | Not achieved | No self-improvement protocol or automated evolution loop exists. |
 
 ## Responsibility Activation

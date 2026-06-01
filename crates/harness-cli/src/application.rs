@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use crate::domain::{
     BacklogFilter, BacklogRecord, BoolFlag, CsvList, DecisionRecord, FrictionRecord, HarnessStats,
-    InputType, IntakeRecord, RiskLane, StoryMatrixRecord, TraceRecord, TraceScoreResult,
+    InputType, IntakeRecord, RiskLane, StoryMatrixRecord, StoryVerifyStatus, TraceRecord,
+    TraceScoreResult,
 };
 use crate::infrastructure::{HarnessRepository, SqliteHarnessRepository};
 
@@ -30,6 +31,7 @@ pub struct StoryAddInput {
     pub title: String,
     pub risk_lane: RiskLane,
     pub contract_doc: Option<String>,
+    pub verify_command: Option<String>,
     pub notes: Option<String>,
 }
 
@@ -42,6 +44,7 @@ pub struct StoryUpdateInput {
     pub integration: Option<BoolFlag>,
     pub e2e: Option<BoolFlag>,
     pub platform: Option<BoolFlag>,
+    pub verify_command: Option<String>,
 }
 
 #[derive(Debug)]
@@ -130,6 +133,10 @@ impl HarnessService {
         self.repository.update_story(input)
     }
 
+    pub fn verify_story(&self, id: &str) -> crate::infrastructure::Result<StoryVerifyResult> {
+        self.repository.verify_story(id)
+    }
+
     pub fn add_decision(&self, input: DecisionAddInput) -> crate::infrastructure::Result<()> {
         self.repository.add_decision(input)
     }
@@ -152,6 +159,13 @@ impl HarnessService {
 
     pub fn score_trace(&self, id: Option<i64>) -> crate::infrastructure::Result<TraceScoreResult> {
         self.repository.score_trace(id)
+    }
+
+    pub fn story_verify_status(
+        &self,
+        id: &str,
+    ) -> crate::infrastructure::Result<StoryVerifyStatus> {
+        self.repository.story_verify_status(id)
     }
 
     pub fn query_matrix(&self) -> crate::infrastructure::Result<Vec<StoryMatrixRecord>> {
@@ -213,6 +227,14 @@ pub struct BrownfieldImportResult {
 #[derive(Debug, PartialEq, Eq)]
 pub struct DecisionVerifyResult {
     pub command: String,
+    pub result: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct StoryVerifyResult {
+    pub command: String,
+    pub stdout: String,
+    pub stderr: String,
     pub result: String,
 }
 

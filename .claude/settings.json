@@ -163,6 +163,22 @@
                 "hooks": [
                     {
                         "type": "command",
+                        "command": "node scripts/hooks/run-harness-verify.mjs"
+                    }
+                ]
+            },
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/sync-harness-story.mjs"
+                    }
+                ]
+            },
+            {
+                "hooks": [
+                    {
+                        "type": "command",
                         "command": "node scripts/hooks/auto-checkpoint.js"
                     }
                 ]
