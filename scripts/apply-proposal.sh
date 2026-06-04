@@ -11,6 +11,7 @@ cd "$ROOT"
 
 PROP_ID=""
 APPROVE_HIGH_RISK=false
+SKIP_SHIELD=false
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -19,6 +20,7 @@ while [[ $# -gt 0 ]]; do
     --id)                 PROP_ID="$2"; shift ;;
     --approve-risk=high)  APPROVE_HIGH_RISK=true ;;
     --approve-risk=*)     ;; # ignore other risk levels
+    --skip-shield)        SKIP_SHIELD=true ;;
   esac
   shift
 done
@@ -29,7 +31,7 @@ if [[ -z "$PROP_ID" ]]; then
   exit 1
 fi
 
-if [[ ! "$PROP_ID" =~ ^PROP-[0-9]+ ]]; then
+if [[ ! "$PROP_ID" =~ ^PROP-[0-9]+$ ]]; then
   echo "Error: --id must match PROP-NNN format (e.g. --id=PROP-001)."
   exit 1
 fi
@@ -78,6 +80,43 @@ if [[ "$RISK" == "high" && "$APPROVE_HIGH_RISK" != "true" ]]; then
   echo "To apply a high-risk proposal, you must pass --approve-risk=high explicitly:"
   echo "  bash scripts/apply-proposal.sh --id $PROP_ID --approve-risk=high"
   exit 1
+fi
+
+# AgentShield: run security scan before applying high-risk proposals
+if [[ "$RISK" == "high" ]]; then
+  if [[ "$SKIP_SHIELD" == "true" ]]; then
+    if [[ "${FORCE_SKIP_SHIELD:-}" != "1" ]]; then
+      echo "Error: --skip-shield requires FORCE_SKIP_SHIELD=1 set in environment by a human."
+      exit 1
+    fi
+    echo "WARNING: AgentShield scan skipped (FORCE_SKIP_SHIELD=1 + --skip-shield). Proceeding."
+    echo ""
+  elif command -v node &>/dev/null && [[ -f "$ROOT/scripts/security-shield.mjs" ]]; then
+    echo "--- AgentShield Security Scan ---"
+    echo "Running static security scan before applying high-risk proposal..."
+    SHIELD_EXIT=0
+    node "$ROOT/scripts/security-shield.mjs" --scope agents,hooks --output file || SHIELD_EXIT=$?
+    if [[ "$SHIELD_EXIT" == "2" ]]; then
+      AUDIT_DATE=$(date +%Y-%m-%d)
+      echo ""
+      echo "ERROR: AgentShield found HIGH severity security issues."
+      echo "Review: docs/security-audit-${AUDIT_DATE}.md"
+      echo ""
+      echo "Options:"
+      echo "  1. Fix the HIGH severity findings, then re-run this command."
+      echo "  2. Pass --skip-shield to bypass the security check (not recommended):"
+      echo "     bash scripts/apply-proposal.sh --id $PROP_ID --approve-risk=high --skip-shield"
+      exit 3
+    elif [[ "$SHIELD_EXIT" != "0" ]]; then
+      echo "WARNING: AgentShield scan encountered an error (exit $SHIELD_EXIT). Proceeding anyway."
+    else
+      echo "AgentShield: no HIGH severity findings. Proceeding."
+    fi
+    echo ""
+  else
+    echo "WARNING: AgentShield not available (node or scripts/security-shield.mjs missing). Skipping scan."
+    echo ""
+  fi
 fi
 
 # Print summary and validation plan

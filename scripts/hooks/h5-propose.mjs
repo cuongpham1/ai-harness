@@ -57,6 +57,15 @@ try {
 
 const significantFindings = highCount + mediumCount;
 
+// Run instinct-tracker before propose-change (updates confidence scores)
+const trackerScript = path.join(cwd, 'scripts', 'instinct-tracker.mjs');
+if (fs.existsSync(trackerScript)) {
+  const trackerResult = spawnSync('node', [trackerScript], { cwd, encoding: 'utf8', timeout: 30000 });
+  if (trackerResult.status !== 0) {
+    process.stderr.write(`[h5-propose] instinct-tracker warning: ${trackerResult.stderr || trackerResult.error?.message || 'non-zero exit'}\n`);
+  }
+}
+
 // Run propose-change if there are findings
 let proposalsCreated = 0;
 if (significantFindings > 0 && fs.existsSync(proposeScript)) {

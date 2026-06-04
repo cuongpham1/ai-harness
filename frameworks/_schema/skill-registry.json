@@ -15,6 +15,7 @@
     "java-test": { "file": "java-test.md", "framework": "java", "description": "Maven/Gradle tests", "source": "bundled" },
     "csharp-test": { "file": "csharp-test.md", "framework": "csharp", "description": "dotnet test", "source": "bundled" },
     "php-test": { "file": "php-test.md", "framework": "php", "description": "PHPUnit tests", "source": "bundled" },
-    "ruby-test": { "file": "ruby-test.md", "framework": "ruby", "description": "RSpec/Rails tests", "source": "bundled" }
+    "ruby-test": { "file": "ruby-test.md", "framework": "ruby", "description": "RSpec/Rails tests", "source": "bundled" },
+    "agent-shield": { "file": "agent-shield.md", "framework": "all", "description": "Adversarial security scan — hook injection, MCP, secrets, agent injection", "source": "bundled" }
   }
 }

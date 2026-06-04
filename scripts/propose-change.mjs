@@ -20,11 +20,72 @@ import { spawnSync } from 'child_process';
 const cwd = (() => { try { return fs.realpathSync(process.cwd()); } catch { return process.cwd(); } })();
 
 const auditFile = path.join(cwd, 'kg', 'runtime', 'structural-audit-last.json');
+const instinctsFile = path.join(cwd, 'kg', 'runtime', 'instincts.json');
 const proposalsDir = path.join(cwd, 'docs', 'proposals');
 const cliPath = path.join(cwd, 'scripts', 'bin', 'harness-cli');
 const today = new Date().toISOString().slice(0, 10);
 
 function log(...args) { process.stderr.write(args.join(' ') + '\n'); }
+
+// ── Load instincts ────────────────────────────────────────────────────────────
+function loadInstincts() {
+  if (!fs.existsSync(instinctsFile)) return new Map();
+  try {
+    const data = JSON.parse(fs.readFileSync(instinctsFile, 'utf8'));
+    // Instincts are keyed by their id field (finding.id or djb2-based fallback)
+    return new Map((data.instincts || []).map(i => [i.id, i]));
+  } catch (err) {
+    log(`[propose-change] Failed to read instincts.json: ${err.message}`);
+    return new Map();
+  }
+}
+
+// ── Simple djb2 hash — must match instinct-tracker.mjs ───────────────────────
+function djb2Hash(str) {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i);
+    hash = hash >>> 0;
+  }
+  return hash.toString(16).padStart(8, '0');
+}
+
+function makeInstinctId(description) {
+  return `instinct-${djb2Hash(description)}`;
+}
+
+/**
+ * shouldPropose — decide whether to generate a proposal for a finding.
+ *
+ * Returns { propose: boolean, tag: string|null }
+ *   tag is set to '[EMERGING - unconfirmed]' when proposing an untracked finding.
+ */
+function shouldPropose(finding, instinctsMap) {
+  const description = finding.detail || finding.title || finding.id;
+  // Fix #3: prefer finding.id as stable key (matches instinct-tracker stable ID scheme)
+  const instinctId = finding.id ? finding.id : makeInstinctId(description);
+  const instinct = instinctsMap.get(instinctId);
+
+  // Not yet tracked — first time seen
+  if (!instinct) {
+    if (finding.severity === 'low') return { propose: false, tag: null };
+    return { propose: true, tag: '[EMERGING - unconfirmed]' };
+  }
+
+  // Fast-track: high severity seen at least twice
+  if (finding.severity === 'high' && instinct.seen_count >= 2) {
+    return { propose: true, tag: null };
+  }
+
+  // Promoted instinct: confidence >= 0.75 AND seen_count >= 3
+  if (instinct.status === 'promoted') {
+    return { propose: true, tag: null };
+  }
+
+  // Not yet ready
+  log(`[propose-change] skip ${finding.id} — instinct ${instinctId} is ${instinct.status} (confidence=${instinct.confidence_score}, seen=${instinct.seen_count})`);
+  return { propose: false, tag: null };
+}
 
 // ── Load audit findings ───────────────────────────────────────────────────────
 function loadAuditFindings() {
@@ -113,7 +174,7 @@ function slugify(str) {
 }
 
 // ── Generate a proposal file ──────────────────────────────────────────────────
-function generateProposal(propNum, finding, frictionData) {
+function generateProposal(propNum, finding, frictionData, tag = null) {
   const id = String(propNum).padStart(3, '0');
   const slug = slugify(finding.title);
   const filename = `PROP-${id}-${slug}.md`;
@@ -129,7 +190,8 @@ function generateProposal(propNum, finding, frictionData) {
     frictionNote = `\nTop friction component: ${topComponent.label} (count: ${topComponent.count})`;
   }
 
-  const content = `# Proposal: ${finding.title}
+  const titlePrefix = tag ? `${tag} ` : '';
+  const content = `# Proposal: ${titlePrefix}${finding.title}
 
 <!-- finding-id: ${finding.id} -->
 
@@ -201,14 +263,17 @@ function main() {
   const findings = loadAuditFindings();
   const backlogItems = loadBacklogItems();
   const frictionData = loadFrictionData();
+  const instinctsMap = loadInstincts();
 
   log(`[propose-change] audit findings (high/medium): ${findings.length}`);
   log(`[propose-change] open backlog items (proposed/accepted): ${backlogItems.length}`);
+  log(`[propose-change] instincts loaded: ${instinctsMap.size}`);
 
   const { existing, maxPropNum } = getExistingProposals();
 
   let created = 0;
   let skipped = 0;
+  let filtered = 0;
   let currentPropNum = maxPropNum;
 
   for (const finding of findings) {
@@ -218,9 +283,15 @@ function main() {
       continue;
     }
 
+    const { propose, tag } = shouldPropose(finding, instinctsMap);
+    if (!propose) {
+      filtered++;
+      continue;
+    }
+
     currentPropNum++;
-    const filename = generateProposal(currentPropNum, finding, frictionData);
-    log(`[propose-change] created ${filename}`);
+    const filename = generateProposal(currentPropNum, finding, frictionData, tag);
+    log(`[propose-change] created ${filename}${tag ? ` (${tag})` : ''}`);
     created++;
   }
 
@@ -235,7 +306,7 @@ function main() {
     }
   }
 
-  log(`[propose-change] done. created=${created} skipped=${skipped}`);
+  log(`[propose-change] done. created=${created} skipped=${skipped} filtered_by_instinct=${filtered}`);
 
   process.exit(0);
 }

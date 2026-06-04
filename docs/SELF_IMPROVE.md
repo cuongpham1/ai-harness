@@ -84,6 +84,80 @@ After running the validation plan commands:
 3. Compare with `## Predicted Impact`.
 4. Move to `docs/proposals/archive/` when complete.
 
+## Instinct Confidence Threshold
+
+### Why It Exists
+
+Proposals generated from a single observation are noise. A finding that appears once may be transient, environment-specific, or already fixed. The instinct layer decouples *pattern extraction* (identifying friction) from *skill generation* (writing a proposal). Only patterns that have been observed enough times — with sufficient recency and severity — are promoted to full proposals.
+
+### Emerging → Stable → Promoted Lifecycle
+
+Each finding from the structural audit or friction backlog is first recorded in `kg/runtime/instincts.json` as an instinct with `status: "emerging"`. On subsequent harness runs the same finding increments its `seen_count` and recalculates its confidence score. Once confidence is high enough, the instinct is promoted and a full proposal is generated.
+
+| Status | Condition |
+|--------|-----------|
+| emerging | confidence < 0.5 |
+| stable | 0.5 <= confidence < 0.75 |
+| promoted | confidence >= 0.75 AND seen_count >= 3 |
+
+### Confidence Formula
+
+```
+confidence = Math.min(1.0, (seen_count / 3) * severity_weight * recency_weight)
+```
+
+**severity_weight:**
+| Severity | Weight |
+|----------|--------|
+| high | 1.0 |
+| medium | 0.7 |
+| low | 0.4 |
+
+**recency_weight:**
+- 1.0 if `last_seen` was 7 days ago or less
+- Decays by 0.1 per additional week past 7 days
+- Minimum value: 0.3
+
+### Fast-Track Rule
+
+High-severity findings bypass the `seen_count >= 3` requirement. A high-severity finding with `seen_count >= 2` is proposed immediately (without waiting for promoted status).
+
+### First-Time Findings
+
+When a finding has no instinct record yet (first time seen), `propose-change.mjs` still generates a proposal but adds the tag `[EMERGING - unconfirmed]` to the title. This preserves visibility while signalling that the pattern has not yet been confirmed by repeated observation.
+
+### Viewing Instincts
+
+```bash
+cat kg/runtime/instincts.json
+```
+
+The file contains all tracked instincts with their current confidence scores and statuses. Run `node scripts/instinct-tracker.mjs` manually to force a rescan without triggering the full hook cycle.
+
+### Flow with Instinct Layer
+
+```
+structural-audit
+      |
+      v
+  findings JSON (kg/runtime/structural-audit-last.json)
+      |
+      v
+instinct-tracker (upserts findings into kg/runtime/instincts.json)
+      |
+      v
+  instincts.json (emerging → stable → promoted)
+      |
+      v
+propose-change — filters by instinct status
+      |   emerging (first time)  → proposal tagged [EMERGING - unconfirmed]
+      |   stable                 → skipped (not enough confidence yet)
+      |   promoted               → full proposal created
+      |   high + seen>=2         → fast-tracked to proposal
+      v
+  docs/proposals/PROP-NNN-slug.md  (Status: draft)
+```
+
 ## Risk Tiers
 
 | Tier | Description | Gate |

@@ -17,6 +17,11 @@
         "matcher": "Write",
         "command": "node scripts/hooks/cursor/pre-tool-content-guard.mjs",
         "failClosed": true
+      },
+      {
+        "matcher": "Task",
+        "command": "node scripts/hooks/pre-agent-codegraph.mjs",
+        "failClosed": false
       }
     ],
     "postToolUse": [

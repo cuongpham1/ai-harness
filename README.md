@@ -243,6 +243,87 @@ node scripts/check-agent-parity.mjs
 
 ---
 
+## Profile Manifest
+
+The harness tracks installed framework profiles in `kg/runtime/installed-profiles.json` (gitignored, like `harness.db`). This prevents accidental duplicate installs when `install.sh` or `link-install.sh` is re-run on the same target.
+
+### View installed profiles
+
+```bash
+# In the target project directory:
+node scripts/list-profiles.mjs           # pretty-print
+node scripts/list-profiles.mjs --json    # JSON output
+```
+
+### Force reinstall
+
+```bash
+bash install.sh --force --framework nodejs /path/to/project
+bash link-install.sh --force /path/to/project
+```
+
+Without `--force`, re-running install on a target that already has a profile registered will print a warning and skip the framework install step. Core harness files (agents, hooks, docs) are still updated.
+
+### Manifest schema
+
+```json
+{
+  "updated": "ISO date",
+  "profiles": [
+    {
+      "profile_id": "swift",
+      "installed_at": "2026-06-04T...",
+      "version": "unknown",
+      "target_dir": "/abs/path/to/project",
+      "install_mode": "copy|symlink",
+      "checksum": "sha256 of profile.json",
+      "status": "installed|removed"
+    }
+  ]
+}
+```
+
+---
+
+## Security — AgentShield
+
+AgentShield is a static adversarial security scanning skill built into the harness.
+
+### Quick scan
+
+```bash
+node scripts/security-shield.mjs --scope all --output file
+# Writes: docs/security-audit-{YYYY-MM-DD}.md
+```
+
+### Scope options
+
+| Scope | What is scanned |
+|-------|----------------|
+| `hooks` | `scripts/hooks/` — eval, execSync, shell injection vectors |
+| `mcp` | `.claude/settings.json` mcpServers — uncapped access, suspicious commands |
+| `secrets` | All config/code files — 14 secret patterns (API keys, tokens, private keys, JWTs, …) |
+| `agents` | `.claude/agents/` and `.claude/skills/` — instruction injection, privilege escalation |
+| `all` | All of the above |
+
+### 3-agent adversarial pattern
+
+For deep scanning, invoke the `/agent-shield` skill (`.claude/skills/agent-shield.md`):
+- **Attacker agent** — finds exploit chains across all surfaces
+- **Defender agent** — evaluates real exploitability (eliminates theoretical/false positives)
+- **Auditor agent** — synthesises confirmed findings into actionable `docs/security-audit-{date}.md`
+
+### Integration with apply-proposal.sh
+
+`scripts/apply-proposal.sh` automatically runs the shield scan before applying any `risk=high` proposal. If HIGH severity issues are found, the apply is blocked until they are resolved. Use `--skip-shield` to bypass (not recommended).
+
+```bash
+bash scripts/apply-proposal.sh --id PROP-001 --approve-risk=high             # runs shield
+bash scripts/apply-proposal.sh --id PROP-001 --approve-risk=high --skip-shield  # bypasses shield
+```
+
+---
+
 ## Upstream
 
 CLI và nhiều doc theo [harness-experimental](https://github.com/hoangnb24/harness-experimental) (release [harness-cli-v0.1.7](https://github.com/hoangnb24/harness-experimental/tree/harness-cli-v0.1.7)). Repo **ai-harness** thêm: 12 framework, `install.sh`, Cursor layer, `verify-story.sh`, benchmark installer.

@@ -6,11 +6,13 @@
 #   --yes                 Non-interactive (defaults: upgrade merge, auto-detect framework)
 #   --framework <id>      Force framework (flutter, nodejs, java, ...)
 #   --name <project>      Project name for .project-manager/README.md
+#   --force               Reinstall framework profile even if already installed (bypasses manifest check)
 
 set -euo pipefail
 
 HARNESS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 YES=0
+FORCE=0
 FRAMEWORK_ARG=""
 NAME_ARG=""
 TARGET=""
@@ -26,10 +28,11 @@ is_valid_framework() {
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --yes|-y) YES=1; shift ;;
+    --force) FORCE=1; shift ;;
     --framework) FRAMEWORK_ARG="${2:-}"; shift 2 ;;
     --name) NAME_ARG="${2:-}"; shift 2 ;;
     -h|--help)
-      sed -n '2,8p' "$0"
+      sed -n '2,9p' "$0"
       exit 0
       ;;
     --) shift; break ;;
@@ -190,6 +193,29 @@ install_framework() {
   local fw_dir="$harness_dir/frameworks/$framework"
   [[ -d "$fw_dir" ]] || { echo "  ⚠ Framework dir not found: $fw_dir"; return; }
 
+  # --- Manifest duplicate-install check ---
+  if command -v node &>/dev/null && [[ -f "$harness_dir/scripts/profile-manifest.mjs" ]]; then
+    if node "$harness_dir/scripts/profile-manifest.mjs" check "$framework" "$target" 2>/dev/null; then
+      manifest_check_exit=0
+    else
+      manifest_check_exit=$?
+    fi
+    if [[ $manifest_check_exit -eq 0 ]]; then
+      # Exit 0 = installed
+      if [[ "${FORCE:-0}" -eq 0 ]]; then
+        echo ""
+        echo "  ⚠ Profile $framework already installed in $target. Use --force to reinstall."
+        return 0
+      else
+        echo ""
+        echo "  --force: reinstalling profile $framework (overwriting existing install)..."
+      fi
+    elif [[ $manifest_check_exit -ne 1 ]]; then
+      # Exit 1 = not installed (expected). Anything else = node/script error.
+      echo "  ⚠ Warning: manifest check unavailable (node error $manifest_check_exit) — guard inactive" >&2
+    fi
+  fi
+
   echo ""
   echo "Installing framework: $framework..."
 
@@ -291,6 +317,26 @@ install_framework() {
   # Write .harness-profile
   echo "$framework" > "$target/.harness-profile"
   echo "  ✓ .harness-profile ($framework)"
+
+  # --- Update profile manifest ---
+  if command -v node &>/dev/null && [[ -f "$harness_dir/scripts/profile-manifest.mjs" ]]; then
+    local _profile_json="$fw_dir/profile.json"
+    local _version="unknown"
+    local _checksum=""
+    if [[ -f "$_profile_json" ]]; then
+      if command -v python3 &>/dev/null; then
+        _version=$(python3 -c "import json; d=json.load(open('$_profile_json')); print(d.get('version','unknown'))" 2>/dev/null || echo "unknown")
+      fi
+      if command -v shasum &>/dev/null; then
+        _checksum=$(shasum -a 256 "$_profile_json" 2>/dev/null | awk '{print $1}')
+      elif command -v sha256sum &>/dev/null; then
+        _checksum=$(sha256sum "$_profile_json" 2>/dev/null | awk '{print $1}')
+      fi
+    fi
+    node "$harness_dir/scripts/profile-manifest.mjs" add "$framework" "$target" "copy" "$_version" "$_checksum" 2>/dev/null \
+      && echo "  ✓ manifest: $framework registered (kg/runtime/installed-profiles.json)" \
+      || echo "  ⚠ manifest update failed (non-fatal)"
+  fi
 
   # Suggest MCP servers
   if [[ -f "$fw_dir/profile.json" ]] && command -v python3 &>/dev/null; then
@@ -614,6 +660,7 @@ ADDITIONS=(
   "harness.db-shm"
   "scripts/bin/harness-cli"
   ".harness-profile"
+  "kg/runtime/installed-profiles.json"
 )
 if [[ ! -f "$GITIGNORE" ]]; then
   cat > "$GITIGNORE" <<'EOF'

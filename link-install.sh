@@ -1,26 +1,30 @@
 #!/usr/bin/env bash
 # AI Harness Symlink Installer
-# Usage: bash link-install.sh [--yes] /path/to/target/project
+# Usage: bash link-install.sh [--yes] [--force] /path/to/target/project
 #
 # Options:
-#   --yes   Non-interactive; skip confirmation prompt
+#   --yes     Non-interactive; skip confirmation prompt
+#   --force   Reinstall framework profile even if already in manifest
 
 set -euo pipefail
 
 HARNESS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 YES=0
+FORCE=0
 TARGET=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --yes|-y) YES=1; shift ;;
+    --force) FORCE=1; shift ;;
     -h|--help)
       cat <<'EOF'
 AI Harness Symlink Installer
-Usage: bash link-install.sh [--yes] /path/to/target/project
+Usage: bash link-install.sh [--yes] [--force] /path/to/target/project
 
 Options:
-  --yes   Non-interactive; skip confirmation prompt
+  --yes     Non-interactive; skip confirmation prompt
+  --force   Reinstall framework profile even if already in manifest
 EOF
       exit 0
       ;;
@@ -62,7 +66,9 @@ echo ""
 # ---------------------------------------------------------------------------
 if [[ ! -f "$TARGET/.claude/agents/pm.md" ]]; then
   echo "No harness detected — running install.sh first..."
-  bash "$HARNESS_DIR/install.sh" --yes "$TARGET"
+  INSTALL_EXTRA_FLAGS=""
+  [[ "$FORCE" -eq 1 ]] && INSTALL_EXTRA_FLAGS="--force"
+  bash "$HARNESS_DIR/install.sh" --yes $INSTALL_EXTRA_FLAGS "$TARGET"
   echo ""
 fi
 
@@ -125,6 +131,7 @@ GITIGNORE_ENTRIES=(
   "scripts/rtk-python.sh"
   "scripts/install-harness.sh"
   "docs/HARNESS_VERIFICATION.md"
+  "kg/runtime/installed-profiles.json"
 )
 
 GITIGNORE_MARKER_START="# >>> ai-harness symlinks >>>"
@@ -228,6 +235,52 @@ apply_link() {
 echo "Applying symlinks..."
 for rel in "${DIR_LINKS[@]}"; do apply_link "$rel"; done
 for rel in "${FILE_LINKS[@]}"; do apply_link "$rel"; done
+
+# ---------------------------------------------------------------------------
+# Update profile manifest for any installed framework profile
+# ---------------------------------------------------------------------------
+if command -v node &>/dev/null && [[ -f "$HARNESS_DIR/scripts/profile-manifest.mjs" ]]; then
+  HARNESS_PROFILE_FILE="$TARGET/.harness-profile"
+  if [[ -f "$HARNESS_PROFILE_FILE" ]]; then
+    _framework="$(cat "$HARNESS_PROFILE_FILE")"
+    if [[ -n "$_framework" && "$_framework" != "generic" ]]; then
+      _fw_profile_json="$HARNESS_DIR/frameworks/$_framework/profile.json"
+
+      # Resolve version and checksum for manifest registration
+      _version="unknown"
+      _checksum=""
+      if [[ -f "$_fw_profile_json" ]]; then
+        if command -v python3 &>/dev/null; then
+          _version=$(python3 -c "import json; d=json.load(open('$_fw_profile_json')); print(d.get('version','unknown'))" 2>/dev/null || echo "unknown")
+        fi
+        if command -v shasum &>/dev/null; then
+          _checksum=$(shasum -a 256 "$_fw_profile_json" 2>/dev/null | awk '{print $1}')
+        elif command -v sha256sum &>/dev/null; then
+          _checksum=$(sha256sum "$_fw_profile_json" 2>/dev/null | awk '{print $1}')
+        fi
+      fi
+
+      # Check manifest — only call add when appropriate (fix: --force controls add)
+      echo ""
+      if node "$HARNESS_DIR/scripts/profile-manifest.mjs" check "$_framework" "$TARGET" 2>/dev/null; then
+        # Exit 0 = already installed
+        if [[ "$FORCE" -eq 0 ]]; then
+          echo "  = manifest: $_framework already registered (use --force to update)"
+        else
+          echo "  --force: updating manifest entry for $_framework..."
+          node "$HARNESS_DIR/scripts/profile-manifest.mjs" add "$_framework" "$TARGET" "symlink" "$_version" "$_checksum" 2>/dev/null \
+            && echo "  ✓ manifest updated" \
+            || echo "  ⚠ manifest update failed (non-fatal)"
+        fi
+      else
+        # Exit non-0 = not installed (or error — either way, attempt add)
+        node "$HARNESS_DIR/scripts/profile-manifest.mjs" add "$_framework" "$TARGET" "symlink" "$_version" "$_checksum" 2>/dev/null \
+          && echo "  ✓ manifest: $_framework registered as symlink (kg/runtime/installed-profiles.json)" \
+          || echo "  ⚠ manifest register failed (non-fatal)"
+      fi
+    fi
+  fi
+fi
 
 # ---------------------------------------------------------------------------
 # .gitignore managed block (marker-delimited, idempotent replace)

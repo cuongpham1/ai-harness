@@ -52,6 +52,15 @@
                 ]
             },
             {
+                "matcher": "Task",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node scripts/hooks/pre-agent-codegraph.mjs"
+                    }
+                ]
+            },
+            {
                 "matcher": "Bash",
                 "hooks": [
                     {

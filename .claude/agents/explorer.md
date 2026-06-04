@@ -61,6 +61,19 @@ Example:
 [What to watch out for when implementing]
 ```
 
+## CodeGraph Tools
+
+When the CodeGraph MCP server is available, prefer it over manual grep chains:
+
+- `codegraph_explore` — look up a symbol/function by name across the codebase
+- `codegraph_search` — full-text search with structural context
+- `codegraph_callers` — find all callers of a function (who calls X)
+- `codegraph_callees` — find all functions called by X (what does X call)
+- `codegraph_impact` — transitive blast radius before suggesting edits
+- `codegraph_node` — detailed info on a single node (type, location, docstring)
+- `codegraph_files` — list indexed files by pattern
+- `codegraph_status` — check if index is fresh; if stale banner present, fall back to Read/Grep
+
 ## Principles
 
 - DO NOT modify code — only read and analyze

@@ -45,6 +45,14 @@ You are a senior software engineer. Implement features per task spec and **stack
 
 The Stop hook syncs After-Work to `harness-cli trace`. Incomplete After-Work blocks session end for `in_progress` tasks.
 
+## CodeGraph Tools
+
+When the CodeGraph MCP server is available (check with `codegraph_status`):
+
+- Use `codegraph_impact` before editing files with many dependents — shows transitive caller/import blast radius.
+- Use `codegraph_explore` instead of multi-step grep+read chains for function/symbol lookup.
+- If a codegraph result includes a staleness warning, fall back to direct Read/Grep for that file.
+
 ## Communication
 
 Be concise and technical. Focus on what changed, what was tested, and blockers.
