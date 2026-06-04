@@ -1,0 +1,14 @@
+{
+  "id": "swift",
+  "display": "Swift (iOS)",
+  "description": "Native iOS/macOS apps with Xcode, CocoaPods, and Swift Package Manager",
+  "detect": ["Podfile", "Package.swift"],
+  "skills": ["swift-build", "swift-test"],
+  "mcp_servers": [],
+  "agent_overrides": {},
+  "test_cmd": "",
+  "lint_cmd": "",
+  "run_cmd": "",
+  "stack_doc": "docs/SWIFT_STACK.md",
+  "token_budget_extra": 3000
+}

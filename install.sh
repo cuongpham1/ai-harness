@@ -90,7 +90,7 @@ detect_framework() {
   [[ -d "$fw_root" ]] || return
 
   # Check nextjs/vue before generic react; java/csharp before nodejs
-  local priority_order="nextjs vue flutter react java csharp rust go python nodejs php ruby"
+  local priority_order="nextjs vue flutter react java csharp rust go python nodejs php ruby swift"
   for fw in $priority_order; do
     local profile="$fw_root/$fw/profile.json"
     [[ -f "$profile" ]] || continue
@@ -105,7 +105,17 @@ except: pass
 " 2>/dev/null)
     else
       # awk fallback: extract array values from "detect": [...]
-      detect_files=$(awk '/"detect"/{found=1} found && /"[^"]+\./{gsub(/.*"([^"]+)".*/, "\\1"); print; if(/\]/) found=0}' "$profile" 2>/dev/null)
+      # BSD awk compatible: split each line on '"' and print non-empty odd-indexed tokens
+      detect_files=$(awk '
+        /"detect"/ { found=1 }
+        found {
+          n = split($0, parts, "\"")
+          for (i = 2; i <= n; i += 2) {
+            if (parts[i] != "" && parts[i] != "detect") print parts[i]
+          }
+          if (/\]/) found=0
+        }
+      ' "$profile" 2>/dev/null)
     fi
     while IFS= read -r f; do
       [[ -z "$f" ]] && continue
