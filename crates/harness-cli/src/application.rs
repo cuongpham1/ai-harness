@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
 use crate::domain::{
-    BacklogFilter, BacklogRecord, BoolFlag, CsvList, DecisionRecord, FrictionRecord, HarnessStats,
-    InputType, IntakeRecord, RiskLane, StoryMatrixRecord, StoryVerifyStatus, TraceRecord,
-    TraceScoreResult,
+    BacklogFilter, BacklogRecord, BoolFlag, ChainVerifyResult, CostRecord, CsvList, DecisionRecord,
+    FrictionRecord, HarnessStats, InputType, IntakeRecord, RiskLane, StoryMatrixRecord,
+    StoryVerifyStatus, TraceRecord, TraceScoreResult,
 };
 use crate::infrastructure::{HarnessRepository, SqliteHarnessRepository};
 
@@ -157,6 +157,10 @@ impl HarnessService {
         self.repository.record_trace(input)
     }
 
+    pub fn verify_chain(&self) -> crate::infrastructure::Result<ChainVerifyResult> {
+        self.repository.verify_chain()
+    }
+
     pub fn score_trace(&self, id: Option<i64>) -> crate::infrastructure::Result<TraceScoreResult> {
         self.repository.score_trace(id)
     }
@@ -197,6 +201,10 @@ impl HarnessService {
 
     pub fn query_stats(&self) -> crate::infrastructure::Result<HarnessStats> {
         self.repository.query_stats()
+    }
+
+    pub fn query_cost(&self) -> crate::infrastructure::Result<Vec<CostRecord>> {
+        self.repository.query_cost()
     }
 
     pub fn query_sql(&self, sql: &str) -> crate::infrastructure::Result<QueryTable> {

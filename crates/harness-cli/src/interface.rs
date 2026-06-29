@@ -11,9 +11,9 @@ use crate::application::{
     StoryUpdateInput, TraceInput,
 };
 use crate::domain::{
-    parse_optional_integer, proof_display, BacklogFilter, BacklogRecord, BoolFlag, CsvList,
-    DecisionRecord, FrictionRecord, HarnessStats, InputType, IntakeRecord, RiskLane,
-    StoryMatrixRecord, TraceQualityTier, TraceRecord, TraceScoreResult, RISK_LANE_HELP,
+    parse_optional_integer, proof_display, BacklogFilter, BacklogRecord, BoolFlag, ChainVerifyResult,
+    CostRecord, CsvList, DecisionRecord, FrictionRecord, HarnessStats, InputType, IntakeRecord,
+    RiskLane, StoryMatrixRecord, TraceQualityTier, TraceRecord, TraceScoreResult, RISK_LANE_HELP,
 };
 
 #[derive(Parser, Debug)]
@@ -45,6 +45,8 @@ enum Command {
     Trace(TraceArgs),
     /// Score a trace against the trace quality tiers.
     ScoreTrace(ScoreTraceArgs),
+    /// Verify the tamper-evident trace hash-chain.
+    VerifyChain,
     /// Query harness data.
     Query(QueryArgs),
 }
@@ -286,6 +288,8 @@ enum QueryView {
     Traces,
     /// Traces with harness friction.
     Friction,
+    /// Token spend grouped by agent and lane (USD via HARNESS_USD_PER_MTOK).
+    Cost,
     /// Summary counts.
     Stats,
     /// Run arbitrary SQL.
@@ -449,6 +453,13 @@ pub fn run(cli: Cli) -> Result<(), InterfaceError> {
                 std::process::exit(1);
             }
         }
+        Command::VerifyChain => {
+            let result = service.verify_chain()?;
+            print_chain_verify(&result);
+            if !result.is_intact() {
+                std::process::exit(1);
+            }
+        }
         Command::Query(args) => match args.view {
             QueryView::Matrix(args) => print_matrix(&service.query_matrix()?, args.numeric),
             QueryView::Backlog(args) => {
@@ -458,6 +469,7 @@ pub fn run(cli: Cli) -> Result<(), InterfaceError> {
             QueryView::Intakes => print_intakes(&service.query_intakes()?),
             QueryView::Traces => print_traces(&service.query_traces()?),
             QueryView::Friction => print_friction(&service.query_friction()?),
+            QueryView::Cost => print_cost(&service.query_cost()?),
             QueryView::Stats => print_stats(&service.query_stats()?),
             QueryView::Sql { query } => {
                 if query.is_empty() {
@@ -778,6 +790,62 @@ fn print_friction(records: &[FrictionRecord]) {
             "task_summary",
             "harness_friction",
         ],
+        &rows,
+    );
+}
+
+fn print_chain_verify(result: &ChainVerifyResult) {
+    println!("=== Trace Chain Verify ===");
+    println!("Checked: {} hashed trace(s)", result.checked);
+    match result.broken_at {
+        None => println!("Result: INTACT — no tampering detected"),
+        Some(id) => {
+            println!("Result: BROKEN at trace #{id}");
+            if let Some(reason) = &result.reason {
+                println!("Reason: {reason}");
+            }
+        }
+    }
+}
+
+fn print_cost(records: &[CostRecord]) {
+    // Blended rate keeps cost attribution honest about precision — token_estimate
+    // is approximate, so this is for relative visibility, not accounting.
+    let rate: f64 = env::var("HARNESS_USD_PER_MTOK")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(3.0);
+
+    let mut total_tokens = 0i64;
+    let mut total_runs = 0i64;
+    let mut rows: Vec<Vec<String>> = records
+        .iter()
+        .map(|record| {
+            total_tokens += record.total_tokens;
+            total_runs += record.runs;
+            let usd = record.total_tokens as f64 / 1_000_000.0 * rate;
+            vec![
+                record.agent.clone().unwrap_or_else(|| "-".to_owned()),
+                record.risk_lane.clone().unwrap_or_else(|| "-".to_owned()),
+                record.runs.to_string(),
+                record.total_tokens.to_string(),
+                format!("{usd:.4}"),
+            ]
+        })
+        .collect();
+
+    let total_usd = total_tokens as f64 / 1_000_000.0 * rate;
+    rows.push(vec![
+        "TOTAL".to_owned(),
+        "-".to_owned(),
+        total_runs.to_string(),
+        total_tokens.to_string(),
+        format!("{total_usd:.4}"),
+    ]);
+
+    let usd_header = format!("usd@{rate:.1}/Mtok");
+    print_table(
+        &["agent", "lane", "runs", "tokens", usd_header.as_str()],
         &rows,
     );
 }
