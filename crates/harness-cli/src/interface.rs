@@ -733,6 +733,10 @@ fn print_traces(records: &[TraceRecord]) {
                 record.id.to_string(),
                 record.created_at.clone(),
                 record.outcome.clone().unwrap_or_default(),
+                record
+                    .token_estimate
+                    .map(|t| t.to_string())
+                    .unwrap_or_else(|| "-".to_owned()),
                 record.task_summary.clone(),
                 record.harness_friction.clone().unwrap_or_default(),
             ]
@@ -743,6 +747,7 @@ fn print_traces(records: &[TraceRecord]) {
             "id",
             "created_at",
             "outcome",
+            "tokens",
             "task_summary",
             "harness_friction",
         ],

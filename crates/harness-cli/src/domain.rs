@@ -148,6 +148,7 @@ pub struct TraceRecord {
     pub id: i64,
     pub created_at: String,
     pub outcome: Option<String>,
+    pub token_estimate: Option<i64>,
     pub task_summary: String,
     pub harness_friction: Option<String>,
 }

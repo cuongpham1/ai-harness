@@ -110,6 +110,30 @@ function splitList(raw) {
   return raw.split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
 }
 
+/**
+ * Set of files git can corroborate as actually touched: uncommitted changes
+ * (git status) plus files in the last few commits. Used to flag After-Work
+ * "Files changed" entries that git never saw — a trace claiming work it didn't
+ * do (proof-gap). Returns null if git is unavailable (skip the check).
+ */
+function gitTouchedFiles() {
+  try {
+    const status = execFileSync('git', ['status', '--porcelain'], { cwd, encoding: 'utf8', timeout: 8000 });
+    const recent = execFileSync('git', ['diff', '--name-only', 'HEAD~5..HEAD'], { cwd, encoding: 'utf8', timeout: 8000 });
+    const set = new Set();
+    for (const line of status.split('\n')) {
+      const f = line.slice(3).trim();
+      if (f) set.add(f);
+    }
+    for (const f of recent.split('\n')) {
+      if (f.trim()) set.add(f.trim());
+    }
+    return set;
+  } catch {
+    return null; // not a git repo / shallow / git missing — skip honesty check
+  }
+}
+
 function syncSection(taskId, taskContent, section) {
   const hash = crypto.createHash('sha256').update(section.body).digest('hex').slice(0, 16);
   const stateKey = `${taskId}:${section.date}:${hash}`;
@@ -176,7 +200,22 @@ function syncSection(taskId, taskContent, section) {
   if (Number.isFinite(tokens)) {
     args.push('--tokens', String(tokens));
   }
-  args.push('--notes', `task:${taskId} date:${section.date}`);
+
+  // Honesty check: flag claimed changed files git can't corroborate.
+  let note = `task:${taskId} date:${section.date}`;
+  if (filesChanged.length) {
+    const touched = gitTouchedFiles();
+    if (touched) {
+      const unverified = filesChanged.filter(f => !touched.has(f));
+      if (unverified.length) {
+        process.stderr.write(
+          `[sync-harness-trace] ${taskId}: ${unverified.length} claimed changed file(s) not seen by git: ${unverified.join(', ')}\n`,
+        );
+        note += ` unverified-files:${unverified.length}`;
+      }
+    }
+  }
+  args.push('--notes', note);
 
   try {
     execFileSync(cliPath, args, { cwd, stdio: 'pipe', timeout: 15000 });
