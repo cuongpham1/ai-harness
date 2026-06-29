@@ -14,9 +14,27 @@ const { execFileSync } = require('child_process');
 const cwd = (() => { try { return fs.realpathSync(process.cwd()); } catch { return process.cwd(); } })();
 const PM_DIR = path.join(cwd, '.project-manager');
 const cliPath = path.join(cwd, 'scripts', 'bin', 'harness-cli');
+const PIPELINE_STATE = path.join(cwd, 'kg', 'runtime', 'pipeline-state.json');
 
 function readFileSafe(p) {
   try { return fs.readFileSync(p, 'utf8').trim(); } catch { return null; }
+}
+
+/**
+ * Read pipeline-state.json (backlog-27). Returns tasks with an incomplete
+ * pipeline so the session can resume from the next stage instead of restarting.
+ */
+function getPipelineResumes() {
+  let state;
+  try { state = JSON.parse(fs.readFileSync(PIPELINE_STATE, 'utf8')); } catch { return []; }
+  if (!state || typeof state.tasks !== 'object') return [];
+  const resumes = [];
+  for (const [id, entry] of Object.entries(state.tasks)) {
+    if (entry && !entry.done && entry.nextStage) {
+      resumes.push({ id, nextStage: entry.nextStage, completed: entry.completed || [] });
+    }
+  }
+  return resumes;
 }
 
 function getTasksByStatus() {
@@ -67,6 +85,17 @@ try {
     inProgress.forEach(t => parts.push(`- **${t.id}**: ${t.title}  →  \`.project-manager/tasks/${t.id}.md\``));
     parts.push('');
     parts.push('> Read task file for AC, scope, fixer guidance. Token tip: `docs/TOKEN_EFFICIENCY.md`');
+  }
+
+  const resumes = getPipelineResumes();
+  if (resumes.length > 0) {
+    parts.push('');
+    parts.push('### ▶ Pipeline resume (backlog-27)');
+    resumes.forEach(r => {
+      const done = r.completed.length ? r.completed.join(' → ') : 'none';
+      parts.push(`- **${r.id}**: done [${done}] → resume at \`@${r.nextStage}\``);
+    });
+    parts.push('> Pipeline crashed/interrupted mid-flight. Resume from `nextStage`; do not restart at coder.');
   }
 
   if (blocked.length > 0) {

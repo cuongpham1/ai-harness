@@ -2,27 +2,38 @@
 'use strict';
 
 /**
- * PreToolUse Hook — gợi ý /compact tại các điểm hợp lý.
+ * PreToolUse Hook — gợi ý /compact tại các điểm hợp lý, theo 3 cấp độ.
  *
- * Đếm tool calls trong session. Sau 50 calls → nhắc user compact
- * nếu đang chuyển phase (explore → implement, milestone → milestone mới).
+ * Đếm tool calls trong session, phản ứng tăng dần:
+ *   Tier 1 (yellow)  — cảnh báo nhẹ, gợi ý compact sớm
+ *   Tier 2 (orange)  — cảnh báo mạnh, nên compact trước task lớn
+ *   Tier 3 (red)     — chặn tool call, buộc /compact trước khi tiếp tục
  *
  * Tại sao không dùng auto-compact?
  * - Auto-compact xảy ra giữa chừng task → mất context quan trọng
  * - Strategic compact sau milestone → giữ plan, xóa noise
  *
  * Env vars:
- *   COMPACT_THRESHOLD — số tool calls trước khi gợi ý (default: 50)
+ *   COMPACT_TIER1 — ngưỡng cảnh báo vàng (default: 30)
+ *   COMPACT_TIER2 — ngưỡng cảnh báo cam (default: 55)
+ *   COMPACT_TIER3 — ngưỡng chặn đỏ      (default: 80)
  *
- * Always exits 0 — không bao giờ block tool execution.
+ * Tier 1/2 exit 0 không block. Tier 3 trả JSON {"decision":"block",...} ra
+ * stdout và exit 0 — Claude Code sẽ chặn tool call và buộc compaction.
  */
 
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const rawThreshold = parseInt(process.env.COMPACT_THRESHOLD || '50', 10);
-const THRESHOLD = Number.isFinite(rawThreshold) && rawThreshold > 0 ? rawThreshold : 50;
+function parseTier(envVal, fallback) {
+  const raw = parseInt(envVal, 10);
+  return Number.isFinite(raw) && raw > 0 ? raw : fallback;
+}
+
+const TIER1 = parseTier(process.env.COMPACT_TIER1, 30); // yellow warning
+const TIER2 = parseTier(process.env.COMPACT_TIER2, 55); // orange strong
+const TIER3 = parseTier(process.env.COMPACT_TIER3, 80); // red block
 
 function getCounterFile() {
   const sessionId = (process.env.CLAUDE_SESSION_ID || 'default')
@@ -57,15 +68,38 @@ function readAndIncrement(counterFile) {
 
 try {
   const counterFile = getCounterFile();
+
+  // PreCompact mode: clear the counter so the tier ladder restarts after a
+  // /compact. Without this the counter only ever grows and Tier 3 would block
+  // every tool call forever (deadlock) since /compact never resets it.
+  if (process.argv[2] === 'reset') {
+    try { fs.unlinkSync(counterFile); } catch { /* already gone */ }
+    process.exit(0);
+  }
+
   const count = readAndIncrement(counterFile);
 
-  if (count === THRESHOLD) {
+  if (count >= TIER3) {
+    // Tier 3 — red: block the tool call and force /compact.
     process.stderr.write(
-      `[Compact] ${THRESHOLD} tool calls — nếu đang chuyển phase (explore→implement, sau milestone), hãy chạy /compact\n`
+      `🔴 Context CRITICAL: ${count} tool calls. Blocking — run /compact now.\n`
     );
-  } else if (count > THRESHOLD && (count - THRESHOLD) % 25 === 0) {
+    process.stdout.write(
+      JSON.stringify({
+        decision: 'block',
+        reason: `Context window critical (${count} tool calls). Run /compact before continuing.`,
+      })
+    );
+  } else if (count >= TIER2) {
+    // Tier 2 — orange: strong nudge, do not block.
     process.stderr.write(
-      `[Compact] ${count} tool calls — context có thể đang bị noise, cân nhắc /compact\n`
+      `🟠 Context large: ${count} tool calls. Run /compact before next major task.\n` +
+      `   → /compact now will save ~${count * 2}k tokens of context headroom.\n`
+    );
+  } else if (count >= TIER1) {
+    // Tier 1 — yellow: gentle warning.
+    process.stderr.write(
+      `⚠️  Context growing: ${count} tool calls. Consider /compact soon.\n`
     );
   }
 } catch (err) {

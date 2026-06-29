@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Code quality reviewer — detects bugs, security issues, and maintainability problems. Use PROACTIVELY after spec-reviewer passes, before merging. Classifies BLOCKER/MAJOR/MINOR.
-model: haiku
+model: sonnet
 tools: Read, Glob, Grep, Bash, Skill
 skills:
   - code-review-checklist

@@ -17,6 +17,8 @@ const CLI = path.join(ROOT, 'scripts', 'bin', 'harness-cli');
 
 fs.mkdirSync(RESULTS_DIR, { recursive: true });
 
+const RUN_ID = `run-${Date.now()}`;
+
 const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const outFile = path.join(RESULTS_DIR, `${ts}-harness.jsonl`);
 
@@ -274,10 +276,26 @@ console.log(`Output: ${outFile}\n`);
 for (const fn of checks) {
   const start = Date.now();
   const result = fn();
-  result.durationMs = Date.now() - start;
-  result.startTs = new Date(start).toISOString();
-  result.endTs = new Date().toISOString();
-  writeResult(result);
+  const durationMs = Date.now() - start;
+
+  // Per-check timing breakdown. Each check returns a complianceChecks map of
+  // { checkName: bool }; record pass + measured durationMs for each entry.
+  const complianceChecks = result.harnessMetrics?.complianceChecks || {};
+  const checkTimings = {};
+  for (const [name, pass] of Object.entries(complianceChecks)) {
+    checkTimings[name] = { pass, durationMs };
+  }
+  if (result.harnessMetrics) result.harnessMetrics.checkTimings = checkTimings;
+
+  const ordered = {
+    runId: RUN_ID,
+    instanceId: `${RUN_ID}-${result.taskId}`,
+    ...result,
+    durationMs,
+    startTs: new Date(start).toISOString(),
+    endTs: new Date().toISOString(),
+  };
+  writeResult(ordered);
   console.log(`${result.pass ? 'PASS' : 'FAIL'} ${result.taskId}${result.failReason ? ': ' + result.failReason : ''}`);
   if (result.pass) passCount++;
 }

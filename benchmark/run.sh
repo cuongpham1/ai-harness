@@ -11,6 +11,7 @@ RESULTS_DIR="$SCRIPT_DIR/results"
 mkdir -p "$RESULTS_DIR"
 
 TIMESTAMP="$(date -u +%Y-%m-%d-%H-%M)"
+RUN_ID=$(date -u +%Y%m%dT%H%M%SZ)
 RESULTS_FILE="$RESULTS_DIR/$TIMESTAMP.jsonl"
 
 echo ""
@@ -92,7 +93,7 @@ process.stdout.write(fail ? 'FAIL:' + fail : 'PASS');
   fail_reason_json="$(echo "$fail_reason" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>process.stdout.write(JSON.stringify(d.trim()||null)))" 2>/dev/null || echo 'null')"
 
   cat >> "$RESULTS_FILE" <<EOF
-{"taskId":"$task_id","category":"$category","difficulty":"$difficulty","startTs":"$start_ts","endTs":"$end_ts","durationMs":$duration_ms,"pass":$pass,"failReason":$fail_reason_json,"outputSnippet":$snippet}
+{"runId":"$RUN_ID","instanceId":"$RUN_ID-$task_id","taskId":"$task_id","category":"$category","difficulty":"$difficulty","startTs":"$start_ts","endTs":"$end_ts","durationMs":$duration_ms,"pass":$pass,"failReason":$fail_reason_json,"outputSnippet":$snippet}
 EOF
 
 done
