@@ -425,6 +425,10 @@ copy_file() {
       return
     fi
     mkdir -p "$dst_dir"
+    if [[ "$src" -ef "$TARGET/$1" ]]; then
+      echo "  ~ $1 (symlinked, skip)"
+      return
+    fi
     cp "$src" "$TARGET/$1"
     echo "  ✓ $1"
   fi
@@ -437,6 +441,7 @@ refresh_stale_policy_docs() {
     src="$HARNESS_DIR/$rel"
     dst="$TARGET/$rel"
     [[ -f "$src" ]] || continue
+    [[ "$src" -ef "$dst" ]] && continue
     if [[ ! -f "$dst" ]] \
       || grep -qE 'optional later|What we did not install from harness' "$dst" 2>/dev/null; then
       mkdir -p "$(dirname "$dst")"
@@ -464,6 +469,10 @@ refresh_critical_scripts() {
     src="$HARNESS_DIR/$rel"
     dst="$TARGET/$rel"
     [[ -f "$src" ]] || continue
+    if [[ "$src" -ef "$dst" ]]; then
+      echo "  ~ $rel (symlinked, skip)"
+      continue
+    fi
     mkdir -p "$(dirname "$dst")"
     cp "$src" "$dst"
     [[ "$rel" == *.sh ]] && chmod +x "$dst"
@@ -547,9 +556,13 @@ install_harness_cli() {
   mkdir -p "$TARGET/scripts/bin"
 
   if [[ -x "$HARNESS_DIR/scripts/bin/harness-cli" ]]; then
-    cp "$HARNESS_DIR/scripts/bin/harness-cli" "$cli_dst"
-    chmod +x "$cli_dst"
-    echo "  ✓ scripts/bin/harness-cli (copied from installer)"
+    if [[ "$HARNESS_DIR/scripts/bin/harness-cli" -ef "$cli_dst" ]]; then
+      echo "  ~ scripts/bin/harness-cli (symlinked, skip)"
+    else
+      cp "$HARNESS_DIR/scripts/bin/harness-cli" "$cli_dst"
+      chmod +x "$cli_dst"
+      echo "  ✓ scripts/bin/harness-cli (copied from installer)"
+    fi
     return
   fi
 

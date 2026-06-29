@@ -15,6 +15,7 @@ copy_if_new() {
   local src="$HARNESS_DIR/$rel"
   local dst="$TARGET/$rel"
   if [[ ! -f "$src" ]]; then return; fi
+  if [[ "$src" -ef "$dst" ]]; then return; fi
   mkdir -p "$(dirname "$dst")"
   cp "$src" "$dst"
   echo "  ✓ $rel"
@@ -29,6 +30,7 @@ copy_dir_if_new() {
   find "$src" -type f | while read -r f; do
     local sub="${f#$src/}"
     mkdir -p "$(dirname "$dst/$sub")"
+    [[ "$f" -ef "$dst/$sub" ]] && continue
     cp "$f" "$dst/$sub"
     echo "  ✓ $rel/$sub"
   done
@@ -39,8 +41,12 @@ copy_dir_if_new ".cursor/rules"
 
 # Cursor hooks reuse scripts/hooks/cursor (installed with main harness)
 mkdir -p "$TARGET/scripts/hooks/cursor"
-cp -R "$HARNESS_DIR/scripts/hooks/cursor/." "$TARGET/scripts/hooks/cursor/"
-echo "  ✓ scripts/hooks/cursor/"
+if [[ "$HARNESS_DIR/scripts/hooks/cursor" -ef "$TARGET/scripts/hooks/cursor" ]]; then
+  echo "  ~ scripts/hooks/cursor/ (symlinked, skip)"
+else
+  cp -R "$HARNESS_DIR/scripts/hooks/cursor/." "$TARGET/scripts/hooks/cursor/"
+  echo "  ✓ scripts/hooks/cursor/"
+fi
 
 # Subagents from .claude/agents
 node "$HARNESS_DIR/scripts/sync-cursor-agents.mjs" "$TARGET"
