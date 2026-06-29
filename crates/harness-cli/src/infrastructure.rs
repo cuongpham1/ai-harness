@@ -12,9 +12,9 @@ use crate::application::{
     StoryAddInput, StoryUpdateInput, StoryVerifyResult, TraceInput,
 };
 use crate::domain::{
-    normalize_token, score_trace, BacklogFilter, BacklogRecord, DecisionRecord, FrictionRecord,
-    HarnessStats, IntakeRecord, RiskLane, StoryMatrixRecord, StoryVerifyStatus, TraceRecord,
-    TraceScoreResult, TraceScoreSource,
+    normalize_token, score_trace, trace_hash, BacklogFilter, BacklogRecord, ChainVerifyResult,
+    CostRecord, DecisionRecord, FrictionRecord, HarnessStats, IntakeRecord, RiskLane,
+    StoryMatrixRecord, StoryVerifyStatus, TraceRecord, TraceScoreResult, TraceScoreSource,
 };
 
 pub type Result<T> = std::result::Result<T, HarnessInfraError>;
@@ -60,6 +60,7 @@ pub trait HarnessRepository {
     fn add_backlog(&self, input: BacklogAddInput) -> Result<i64>;
     fn close_backlog(&self, input: BacklogCloseInput) -> Result<()>;
     fn record_trace(&self, input: TraceInput) -> Result<i64>;
+    fn verify_chain(&self) -> Result<ChainVerifyResult>;
     fn score_trace(&self, id: Option<i64>) -> Result<TraceScoreResult>;
     fn story_verify_status(&self, id: &str) -> Result<StoryVerifyStatus>;
     fn query_matrix(&self) -> Result<Vec<StoryMatrixRecord>>;
@@ -68,6 +69,7 @@ pub trait HarnessRepository {
     fn query_intakes(&self) -> Result<Vec<IntakeRecord>>;
     fn query_traces(&self) -> Result<Vec<TraceRecord>>;
     fn query_friction(&self) -> Result<Vec<FrictionRecord>>;
+    fn query_cost(&self) -> Result<Vec<CostRecord>>;
     fn query_stats(&self) -> Result<HarnessStats>;
     fn query_sql(&self, sql: &str) -> Result<QueryTable>;
 }
@@ -631,12 +633,33 @@ impl HarnessRepository for SqliteHarnessRepository {
 
     fn record_trace(&self, input: TraceInput) -> Result<i64> {
         let connection = self.open_existing()?;
+
+        // Hash-chain: link this entry to the newest existing one (migration 006).
+        let prev_hash: String = connection
+            .query_row(
+                "SELECT entry_hash FROM trace
+                 WHERE entry_hash IS NOT NULL ORDER BY id DESC LIMIT 1;",
+                [],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()?
+            .unwrap_or_default();
+        let entry_hash = trace_hash(
+            &prev_hash,
+            &input.task_summary,
+            input.agent.as_deref().unwrap_or(""),
+            input.outcome.as_deref().unwrap_or(""),
+            input.token_estimate.unwrap_or(0),
+            input.notes.as_deref().unwrap_or(""),
+        );
+
         connection.execute(
             "INSERT INTO trace (
                 task_summary, intake_id, story_id, agent,
                 actions_taken, files_read, files_changed, decisions_made, errors,
-                outcome, duration_seconds, token_estimate, harness_friction, notes
-             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14);",
+                outcome, duration_seconds, token_estimate, harness_friction, notes,
+                entry_hash, prev_hash
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16);",
             params![
                 input.task_summary,
                 input.intake_id,
@@ -652,9 +675,73 @@ impl HarnessRepository for SqliteHarnessRepository {
                 input.token_estimate,
                 input.friction,
                 input.notes,
+                entry_hash,
+                prev_hash,
             ],
         )?;
         Ok(connection.last_insert_rowid())
+    }
+
+    fn verify_chain(&self) -> Result<ChainVerifyResult> {
+        let connection = self.open_existing()?;
+        let mut statement = connection.prepare(
+            "SELECT id, task_summary, agent, outcome, token_estimate, notes, entry_hash, prev_hash
+             FROM trace WHERE entry_hash IS NOT NULL ORDER BY id ASC;",
+        )?;
+
+        let rows = statement.query_map([], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, Option<String>>(3)?,
+                row.get::<_, Option<i64>>(4)?,
+                row.get::<_, Option<String>>(5)?,
+                row.get::<_, String>(6)?,
+                row.get::<_, Option<String>>(7)?,
+            ))
+        })?;
+
+        let mut checked = 0i64;
+        let mut expected_prev = String::new();
+        for row in rows {
+            let (id, summary, agent, outcome, tokens, notes, entry_hash, prev_hash) = row?;
+            checked += 1;
+            let prev_hash = prev_hash.unwrap_or_default();
+
+            if prev_hash != expected_prev {
+                return Ok(ChainVerifyResult {
+                    checked,
+                    broken_at: Some(id),
+                    reason: Some(
+                        "prev_hash mismatch (a prior trace was edited or deleted)".to_owned(),
+                    ),
+                });
+            }
+
+            let recomputed = trace_hash(
+                &prev_hash,
+                &summary,
+                agent.as_deref().unwrap_or(""),
+                outcome.as_deref().unwrap_or(""),
+                tokens.unwrap_or(0),
+                notes.as_deref().unwrap_or(""),
+            );
+            if recomputed != entry_hash {
+                return Ok(ChainVerifyResult {
+                    checked,
+                    broken_at: Some(id),
+                    reason: Some("entry_hash mismatch (this trace's content was edited)".to_owned()),
+                });
+            }
+            expected_prev = entry_hash;
+        }
+
+        Ok(ChainVerifyResult {
+            checked,
+            broken_at: None,
+            reason: None,
+        })
     }
 
     fn score_trace(&self, id: Option<i64>) -> Result<TraceScoreResult> {
@@ -873,6 +960,29 @@ impl HarnessRepository for SqliteHarnessRepository {
                 input_type: row.get(3)?,
                 task_summary: row.get(4)?,
                 harness_friction: row.get(5)?,
+            })
+        })?;
+
+        collect_rows(rows)
+    }
+
+    fn query_cost(&self) -> Result<Vec<CostRecord>> {
+        let connection = self.open_existing()?;
+        let mut statement = connection.prepare(
+            "SELECT trace.agent, intake.risk_lane, COUNT(*),
+                    COALESCE(SUM(trace.token_estimate), 0)
+             FROM trace
+             LEFT JOIN intake ON intake.id = trace.intake_id
+             GROUP BY trace.agent, intake.risk_lane
+             ORDER BY COALESCE(SUM(trace.token_estimate), 0) DESC;",
+        )?;
+
+        let rows = statement.query_map([], |row| {
+            Ok(CostRecord {
+                agent: row.get(0)?,
+                risk_lane: row.get(1)?,
+                runs: row.get(2)?,
+                total_tokens: row.get(3)?,
             })
         })?;
 
@@ -1236,11 +1346,55 @@ mod tests {
         assert_eq!(repository.query_stats().unwrap().intakes, 0);
         let connection = repository.open_existing().unwrap();
         let schema_version = SqliteHarnessRepository::schema_version(&connection).unwrap();
-        assert_eq!(schema_version, 5);
+        assert_eq!(schema_version, 6);
         let story_columns = story_columns(&connection);
         assert!(story_columns.contains(&"verify_command".to_owned()));
         assert!(story_columns.contains(&"last_verified_at".to_owned()));
         assert!(story_columns.contains(&"last_verified_result".to_owned()));
+    }
+
+    fn minimal_trace(summary: &str) -> TraceInput {
+        TraceInput {
+            task_summary: summary.to_owned(),
+            intake_id: None,
+            story_id: None,
+            agent: Some("coder".to_owned()),
+            outcome: Some("completed".to_owned()),
+            duration_seconds: None,
+            token_estimate: Some(100),
+            friction: None,
+            notes: Some("chain test".to_owned()),
+            actions: CsvList::from_optional(None),
+            files_read: CsvList::from_optional(None),
+            files_changed: CsvList::from_optional(None),
+            decisions: CsvList::from_optional(None),
+            errors: CsvList::from_optional(None),
+        }
+    }
+
+    #[test]
+    fn verify_chain_detects_tampering() {
+        let (_temp_dir, repository) = test_repository();
+        repository.init().unwrap();
+        repository.record_trace(minimal_trace("first")).unwrap();
+        let second = repository.record_trace(minimal_trace("second")).unwrap();
+
+        let intact = repository.verify_chain().unwrap();
+        assert_eq!(intact.checked, 2);
+        assert!(intact.is_intact());
+
+        // Tamper: edit the second trace's content without recomputing its hash.
+        let connection = repository.open_existing().unwrap();
+        connection
+            .execute(
+                "UPDATE trace SET task_summary = 'tampered' WHERE id = ?1;",
+                params![second],
+            )
+            .unwrap();
+
+        let broken = repository.verify_chain().unwrap();
+        assert!(!broken.is_intact());
+        assert_eq!(broken.broken_at, Some(second));
     }
 
     #[test]
@@ -1253,11 +1407,11 @@ mod tests {
         let result = repository.migrate().unwrap();
 
         assert_eq!(result.current_version, 1);
-        assert_eq!(result.applied, vec![2, 3, 4, 5]);
+        assert_eq!(result.applied, vec![2, 3, 4, 5, 6]);
         let connection = repository.open_existing().unwrap();
         assert_eq!(
             SqliteHarnessRepository::schema_version(&connection).unwrap(),
-            5
+            6
         );
         let story_columns = story_columns(&connection);
         assert!(story_columns.contains(&"verify_command".to_owned()));

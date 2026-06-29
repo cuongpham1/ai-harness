@@ -1,7 +1,46 @@
 use std::fmt;
 use std::str::FromStr;
 
+use sha2::{Digest, Sha256};
 use thiserror::Error;
+
+/// sha256 of a trace's content chained to the previous trace's hash. Field
+/// order and the unit-separator delimiter must stay stable — record and verify
+/// both call this, and any change would break every existing chain.
+pub fn trace_hash(
+    prev_hash: &str,
+    task_summary: &str,
+    agent: &str,
+    outcome: &str,
+    token_estimate: i64,
+    notes: &str,
+) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(
+        format!("{prev_hash}\u{1f}{task_summary}\u{1f}{agent}\u{1f}{outcome}\u{1f}{token_estimate}\u{1f}{notes}")
+            .as_bytes(),
+    );
+    let digest = hasher.finalize();
+    let mut hex = String::with_capacity(64);
+    for byte in digest {
+        hex.push_str(&format!("{byte:02x}"));
+    }
+    hex
+}
+
+/// Result of verifying the trace hash-chain.
+#[derive(Debug, PartialEq, Eq)]
+pub struct ChainVerifyResult {
+    pub checked: i64,
+    pub broken_at: Option<i64>,
+    pub reason: Option<String>,
+}
+
+impl ChainVerifyResult {
+    pub fn is_intact(&self) -> bool {
+        self.broken_at.is_none()
+    }
+}
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum ParseHarnessValueError {
@@ -334,6 +373,15 @@ pub struct FrictionRecord {
     pub input_type: Option<String>,
     pub task_summary: String,
     pub harness_friction: String,
+}
+
+/// Cost attribution rollup: token spend grouped by agent + lane.
+#[derive(Debug, PartialEq, Eq)]
+pub struct CostRecord {
+    pub agent: Option<String>,
+    pub risk_lane: Option<String>,
+    pub runs: i64,
+    pub total_tokens: i64,
 }
 
 #[derive(Debug, PartialEq, Eq)]
