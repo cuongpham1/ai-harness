@@ -2,7 +2,7 @@
     "agent": "pm",
     "statusLine": {
         "type": "command",
-        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hud/index.mjs"
+        "command": "node scripts/hud/index.mjs"
     },
     "hooks": {
         "SessionStart": [
@@ -10,7 +10,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/session-start-pm.js"
+                        "command": "node scripts/hooks/session-start-pm.js"
                     }
                 ]
             }
@@ -20,7 +20,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/hud-agent-track.mjs stop"
+                        "command": "node scripts/hooks/hud-agent-track.mjs stop"
                     }
                 ]
             },
@@ -28,7 +28,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/subagent-log.js stop"
+                        "command": "node scripts/hooks/subagent-log.js stop"
                     }
                 ]
             },
@@ -36,7 +36,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/trace-logger.mjs stop"
+                        "command": "node scripts/hooks/trace-logger.mjs stop"
                     }
                 ]
             }
@@ -47,7 +47,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/subagent-start-bundle.mjs"
+                        "command": "node scripts/hooks/subagent-start-bundle.mjs"
                     }
                 ]
             },
@@ -56,7 +56,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/pre-agent-codegraph.mjs"
+                        "command": "node scripts/hooks/pre-agent-codegraph.mjs"
                     }
                 ]
             },
@@ -65,7 +65,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/block-dangerous-bash.js"
+                        "command": "node scripts/hooks/block-dangerous-bash.js"
                     }
                 ]
             },
@@ -74,7 +74,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/guard-commit.js"
+                        "command": "node scripts/hooks/guard-commit.js"
                     }
                 ]
             },
@@ -82,7 +82,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/suggest-compact.js"
+                        "command": "node scripts/hooks/suggest-compact.js"
                     }
                 ]
             },
@@ -91,7 +91,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/content-guard.mjs"
+                        "command": "node scripts/hooks/content-guard.mjs"
                     }
                 ]
             },
@@ -100,7 +100,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/content-guard.mjs"
+                        "command": "node scripts/hooks/content-guard.mjs"
                     }
                 ]
             }
@@ -111,7 +111,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/post-commit-archaeologist.js"
+                        "command": "node scripts/hooks/post-commit-archaeologist.js"
                     }
                 ]
             },
@@ -120,7 +120,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/update-pm-readme.js"
+                        "command": "node scripts/hooks/update-pm-readme.js"
                     }
                 ]
             },
@@ -129,7 +129,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/post-tool-task-tracker.js"
+                        "command": "node scripts/hooks/post-tool-task-tracker.js"
                     }
                 ]
             },
@@ -138,7 +138,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/post-tool-task-tracker.js"
+                        "command": "node scripts/hooks/post-tool-task-tracker.js"
                     }
                 ]
             }
@@ -148,7 +148,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/check-task-handoff.js"
+                        "command": "node scripts/hooks/check-task-handoff.js"
                     }
                 ]
             },
@@ -156,7 +156,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/sync-harness-trace.mjs"
+                        "command": "node scripts/hooks/sync-harness-trace.mjs"
                     }
                 ]
             },
@@ -164,7 +164,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/score-trace-after-sync.mjs"
+                        "command": "node scripts/hooks/score-trace-after-sync.mjs"
                     }
                 ]
             },
@@ -172,7 +172,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/run-harness-verify.mjs"
+                        "command": "node scripts/hooks/run-harness-verify.mjs"
                     }
                 ]
             },
@@ -180,7 +180,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/sync-harness-story.mjs"
+                        "command": "node scripts/hooks/sync-harness-story.mjs"
                     }
                 ]
             },
@@ -188,7 +188,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/auto-checkpoint.js"
+                        "command": "node scripts/hooks/auto-checkpoint.js"
                     }
                 ]
             },
@@ -196,7 +196,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/backlog-surface.mjs"
+                        "command": "node scripts/hooks/backlog-surface.mjs"
                     }
                 ]
             },
@@ -204,7 +204,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/h5-propose.mjs"
+                        "command": "node scripts/hooks/h5-propose.mjs"
                     }
                 ]
             }

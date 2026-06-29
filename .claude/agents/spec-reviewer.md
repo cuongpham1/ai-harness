@@ -1,7 +1,7 @@
 ---
 name: spec-reviewer
 description: Spec compliance reviewer — checks whether code correctly and completely implements the spec. Use PROACTIVELY after the coder finishes implementing, before code quality review.
-model: sonnet
+model: opus
 tools: Read, Glob, Grep, Skill
 ---
 

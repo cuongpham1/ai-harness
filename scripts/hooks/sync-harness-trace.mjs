@@ -129,6 +129,18 @@ function syncSection(taskId, taskContent, section) {
   const friction = field(section.body, 'Friction') || 'none';
   const decisions = field(section.body, 'Decisions');
 
+  // Structured action/file evidence for standard-tier traces.
+  // Prefer explicit After-Work fields; fall back to derivable signals so the
+  // trace still reaches `standard` when an agent omits them.
+  let actions = splitList(field(section.body, 'Actions') || field(section.body, 'Actions taken'));
+  if (!actions.length && summary) actions = [summary];
+
+  let filesRead = splitList(field(section.body, 'Files read') || field(section.body, 'Read'));
+  if (!filesRead.length && filesChanged.length) {
+    // Editing a file implies it was read first (read-before-edit convention).
+    filesRead = filesChanged.slice();
+  }
+
   if (!fs.existsSync(cliPath)) return false;
 
   const intakeId = resolveIntakeId(taskId, taskContent);
@@ -146,6 +158,12 @@ function syncSection(taskId, taskContent, section) {
   }
   if (story && story !== 'optional' && !story.includes('(')) {
     args.push('--story', story.replace(/[()]/g, ''));
+  }
+  if (actions.length) {
+    args.push('--actions', actions.join(','));
+  }
+  if (filesRead.length) {
+    args.push('--read', filesRead.join(','));
   }
   if (filesChanged.length) {
     args.push('--changed', filesChanged.join(','));

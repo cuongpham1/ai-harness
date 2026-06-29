@@ -1,7 +1,7 @@
 ---
 name: tester
 description: QA engineer — writes test plans, executes tests, verifies behavior, finds edge cases. Use when verifying implementation against AC and use cases.
-model: sonnet
+model: haiku
 tools: Read, Glob, Grep, Bash, Skill
 skills:
   - test-driven-development

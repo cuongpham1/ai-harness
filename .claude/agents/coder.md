@@ -1,7 +1,7 @@
 ---
 name: coder
 description: Senior engineer for feature implementation. Use PROACTIVELY when writing new code, refactoring, or adding tests. Always lazy-load conventions at the point of use.
-model: sonnet
+model: opus
 tools: Read, Write, Edit, Glob, Grep, Bash
 skills:
   - test-driven-development
@@ -38,12 +38,14 @@ You are a senior software engineer. Implement features per task spec and **stack
 **Agent:** coder
 **Outcome:** completed
 **Done:** <one sentence summary>
+**Actions:** <comma-separated steps, e.g. read CLAUDE.md, ran tests, edited src/main.rs>
+**Files read:** path/a, path/b
 **Files changed:** path/a, path/b
 **Errors:** none
 **Friction:** none
 ```
 
-The Stop hook syncs After-Work to `harness-cli trace`. Incomplete After-Work blocks session end for `in_progress` tasks.
+The Stop hook syncs After-Work to `harness-cli trace` (maps `Actions`→`--actions`, `Files read`→`--read`, `Files changed`→`--changed`). Populate `Actions` and `Files read` to reach the `standard` trace tier required for normal-lane work. Incomplete After-Work blocks session end for `in_progress` tasks.
 
 ## CodeGraph Tools
 
