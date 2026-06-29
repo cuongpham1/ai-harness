@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# pre-commit: sync .claude/agents → .cursor/agents if any claude agent is staged
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# Check if any .claude/agents/*.md is staged
+if git diff --cached --name-only | grep -q "^\.claude/agents/"; then
+  echo "[pre-commit] .claude/agents changed — syncing to .cursor/agents..."
+  node "$REPO_ROOT/scripts/sync-cursor-agents.mjs" "$REPO_ROOT"
+  git add "$REPO_ROOT/.cursor/agents/"
+  echo "[pre-commit] sync OK"
+fi
