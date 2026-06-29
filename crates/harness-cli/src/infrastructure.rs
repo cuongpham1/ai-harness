@@ -831,7 +831,7 @@ impl HarnessRepository for SqliteHarnessRepository {
     fn query_traces(&self) -> Result<Vec<TraceRecord>> {
         let connection = self.open_existing()?;
         let mut statement = connection.prepare(
-            "SELECT id, created_at, outcome, task_summary, harness_friction
+            "SELECT id, created_at, outcome, token_estimate, task_summary, harness_friction
              FROM trace ORDER BY id DESC LIMIT 20;",
         )?;
 
@@ -840,8 +840,9 @@ impl HarnessRepository for SqliteHarnessRepository {
                 id: row.get(0)?,
                 created_at: row.get(1)?,
                 outcome: row.get(2)?,
-                task_summary: row.get(3)?,
-                harness_friction: row.get(4)?,
+                token_estimate: row.get(3)?,
+                task_summary: row.get(4)?,
+                harness_friction: row.get(5)?,
             })
         })?;
 
