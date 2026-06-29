@@ -144,8 +144,10 @@ select_framework() {
     [[ -f "$fw_dir/profile.json" ]] && frameworks+=("$fw")
   done
 
-  echo ""
-  echo "Select framework:"
+  # Menu/prompt go to stderr so `FRAMEWORK=$(select_framework ...)` captures
+  # only the final result line, not the menu text (backlog-19).
+  echo "" >&2
+  echo "Select framework:" >&2
   local i=1
   local default_idx=$((${#frameworks[@]} + 1))
   for fw in "${frameworks[@]}"; do
@@ -160,14 +162,14 @@ except: print('$fw')
 " 2>/dev/null)
     fi
     if [[ "$fw" == "$detected" ]]; then
-      echo "  $i) $display  ← auto-detected"
+      echo "  $i) $display  ← auto-detected" >&2
       default_idx=$i
     else
-      echo "  $i) $display"
+      echo "  $i) $display" >&2
     fi
     ((i++))
   done
-  echo "  $i) Generic (no framework)"
+  echo "  $i) Generic (no framework)" >&2
 
   if [[ "$YES" -eq 1 ]]; then
     choice=""
@@ -451,7 +453,28 @@ refresh_stale_policy_docs() {
   done
 }
 
-# Upgrade: always refresh hook/verify scripts (behavior fixes without overwriting whole tree)
+# Upgrade: sync entire harness-owned script dirs by content-diff. These dirs are
+# managed by the harness (gitignored in targets), so any new or changed file
+# should propagate on upgrade without a hand-maintained whitelist (backlog-B).
+refresh_managed_dirs() {
+  local d src dst rel
+  for d in scripts/hooks scripts/utils scripts/hud; do
+    [[ -d "$HARNESS_DIR/$d" ]] || continue
+    while IFS= read -r src; do
+      rel="${src#$HARNESS_DIR/}"
+      dst="$TARGET/$rel"
+      [[ "$src" -ef "$dst" ]] && continue   # symlinked tree — already live
+      if [[ ! -f "$dst" ]] || ! cmp -s "$src" "$dst"; then
+        mkdir -p "$(dirname "$dst")"
+        cp "$src" "$dst"
+        [[ "$rel" == *.sh ]] && chmod +x "$dst"
+        echo "  ✓ $rel (synced)"
+      fi
+    done < <(find "$HARNESS_DIR/$d" -type f ! -name '.DS_Store')
+  done
+}
+
+# Upgrade: refresh harness-owned scripts outside the managed dirs above.
 refresh_critical_scripts() {
   local rel src dst
   for rel in \
@@ -459,15 +482,6 @@ refresh_critical_scripts() {
     scripts/verify-h4.sh \
     scripts/check-agent-parity.mjs \
     scripts/sync-cursor-agents.mjs \
-    scripts/hooks/sync-harness-story.mjs \
-    scripts/hooks/lib-harness-task.mjs \
-    scripts/hooks/update-pm-readme.js \
-    scripts/hooks/session-start-pm.js \
-    scripts/hooks/run-harness-verify.mjs \
-    scripts/hooks/backlog-surface.mjs \
-    scripts/hooks/pipeline-checkpoint.mjs \
-    scripts/hooks/suggest-compact.js \
-    scripts/hooks/sync-harness-trace.mjs \
     scripts/batch-verify.sh; do
     src="$HARNESS_DIR/$rel"
     dst="$TARGET/$rel"
@@ -525,6 +539,7 @@ bash "$HARNESS_DIR/scripts/merge-agents-md.sh" "$HARNESS_DIR" "$TARGET"
 
 if [[ "$UPGRADE_MODE" == "true" ]]; then
   refresh_stale_policy_docs
+  refresh_managed_dirs
   refresh_critical_scripts
   # settings.json is skipped-if-exists on upgrade; merge any new hook wiring.
   node "$HARNESS_DIR/scripts/merge-settings-hooks.mjs" "$HARNESS_DIR" "$TARGET" 2>/dev/null || true
