@@ -625,6 +625,21 @@ else
   echo "  ✓ Agent parity OK"
 fi
 
+# Wire git pre-commit hook (auto-sync .cursor/agents on commit)
+echo ""
+echo "Wiring git pre-commit hook..."
+HOOK_FILE="$TARGET/scripts/hooks/git/pre-commit"
+if [[ -f "$HOOK_FILE" ]]; then
+  chmod +x "$HOOK_FILE"
+  if git -C "$TARGET" config core.hooksPath scripts/hooks/git 2>/dev/null; then
+    echo "  ✓ git hooksPath → scripts/hooks/git"
+  else
+    echo "  ⚠ Not a git repo — skipping hooksPath config"
+  fi
+else
+  echo "  ⚠ pre-commit hook not found at $HOOK_FILE"
+fi
+
 # Create runtime dirs
 mkdir -p "$TARGET/kg/runtime"
 mkdir -p "$TARGET/kg/traces"
