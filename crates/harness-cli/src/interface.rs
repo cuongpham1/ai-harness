@@ -11,9 +11,10 @@ use crate::application::{
     StoryUpdateInput, TraceInput,
 };
 use crate::domain::{
-    parse_optional_integer, proof_display, BacklogFilter, BacklogRecord, BoolFlag, ChainVerifyResult,
-    CostRecord, CsvList, DecisionRecord, FrictionRecord, HarnessStats, InputType, IntakeRecord,
-    RiskLane, StoryMatrixRecord, TraceQualityTier, TraceRecord, TraceScoreResult, RISK_LANE_HELP,
+    parse_optional_integer, proof_display, BacklogFilter, BacklogRecord, BoolFlag,
+    ChainVerifyResult, CostRecord, CsvList, DecisionRecord, FrictionRecord, HarnessStats,
+    InputType, IntakeRecord, RiskLane, StoryMatrixRecord, TraceQualityTier, TraceRecord,
+    TraceScoreResult, RISK_LANE_HELP,
 };
 
 #[derive(Parser, Debug)]

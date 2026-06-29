@@ -731,7 +731,9 @@ impl HarnessRepository for SqliteHarnessRepository {
                 return Ok(ChainVerifyResult {
                     checked,
                     broken_at: Some(id),
-                    reason: Some("entry_hash mismatch (this trace's content was edited)".to_owned()),
+                    reason: Some(
+                        "entry_hash mismatch (this trace's content was edited)".to_owned(),
+                    ),
                 });
             }
             expected_prev = entry_hash;
