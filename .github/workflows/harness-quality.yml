@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -25,10 +25,18 @@ jobs:
       - name: Check shell scripts
         run: |
           bash -n install.sh
+          bash -n link-install.sh
           bash -n scripts/install-harness.sh
           bash -n scripts/verify-h3.sh
           bash -n scripts/verify-h4.sh
           bash -n scripts/verify-story.sh
+          bash -n scripts/test-install.sh
+
+      - name: Hook unit tests
+        run: node scripts/hooks/pipeline-checkpoint.test.mjs
+
+      - name: Install smoke test
+        run: bash scripts/test-install.sh
 
       - name: Agent parity (Claude vs Cursor)
         run: node scripts/check-agent-parity.mjs
