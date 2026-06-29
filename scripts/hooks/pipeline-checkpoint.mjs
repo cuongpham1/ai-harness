@@ -120,6 +120,29 @@ export function resolveActiveTask(tasksDir = TASKS_DIR) {
   return match;
 }
 
+/** Read a task file's Status, or null if the file is gone. */
+function taskStatus(id, tasksDir = TASKS_DIR) {
+  try {
+    const content = fs.readFileSync(path.join(tasksDir, `${id}.md`), 'utf8');
+    return (content.match(/\*\*Status:\*\*\s*(\S+)/) || [])[1]?.toLowerCase() || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Drop checkpoints for tasks that are no longer in_progress (done, retired, or
+ * file deleted) so resume hints don't accumulate stale noise (backlog-C).
+ * `keepId` is never pruned — it's the task just checkpointed this run.
+ */
+export function pruneState(state, keepId, tasksDir = TASKS_DIR) {
+  const tasks = {};
+  for (const [id, entry] of Object.entries(state.tasks)) {
+    if (id === keepId || taskStatus(id, tasksDir) === 'in_progress') tasks[id] = entry;
+  }
+  return { ...state, tasks };
+}
+
 function loadState() {
   try {
     const parsed = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
@@ -168,7 +191,7 @@ async function main() {
   const result = payload.result || payload.status || payload.stop_reason || null;
   const ts = new Date().toISOString();
 
-  const next = recordStage(loadState(), task, stage, result, ts);
+  const next = pruneState(recordStage(loadState(), task, stage, result, ts), task.id);
   writeAtomic(STATE_FILE, JSON.stringify(next, null, 2));
 }
 

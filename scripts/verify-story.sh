@@ -154,10 +154,13 @@ if [[ -f "$ROOT/.harness-profile" ]]; then
 fi
 
 PROFILE_JSON=""
-if [[ -n "$FRAMEWORK" && -f "$ROOT/frameworks/$FRAMEWORK/profile.json" ]]; then
-  PROFILE_JSON="$ROOT/frameworks/$FRAMEWORK/profile.json"
-elif [[ -f "$ROOT/.harness-verify.json" ]]; then
+# Prefer the project's own .harness-verify.json unconditionally — a copied
+# frameworks/<id>/profile.json (often empty-cmd) must never shadow it and turn
+# verification into a silent no-op (backlog-20).
+if [[ -f "$ROOT/.harness-verify.json" ]]; then
   PROFILE_JSON="$ROOT/.harness-verify.json"
+elif [[ -n "$FRAMEWORK" && -f "$ROOT/frameworks/$FRAMEWORK/profile.json" ]]; then
+  PROFILE_JSON="$ROOT/frameworks/$FRAMEWORK/profile.json"
 elif [[ -n "$FRAMEWORK" && -f "$ROOT/../frameworks/$FRAMEWORK/profile.json" ]]; then
   PROFILE_JSON="$ROOT/../frameworks/$FRAMEWORK/profile.json"
 fi

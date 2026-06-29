@@ -246,6 +246,15 @@ if command -v node &>/dev/null && [[ -f "$HARNESS_DIR/scripts/profile-manifest.m
     if [[ -n "$_framework" && "$_framework" != "generic" ]]; then
       _fw_profile_json="$HARNESS_DIR/frameworks/$_framework/profile.json"
 
+      # Generate the project-local verify profile if missing (backlog-A).
+      # link-install never created .harness-verify.json, so symlink projects
+      # were both undiscoverable (no marker) and gave verify-story no project
+      # profile to read. Seed it from the framework profile; the user edits it.
+      if [[ ! -f "$TARGET/.harness-verify.json" && -f "$_fw_profile_json" ]]; then
+        cp "$_fw_profile_json" "$TARGET/.harness-verify.json"
+        echo "  ✓ .harness-verify.json (seeded from $_framework profile)"
+      fi
+
       # Resolve version and checksum for manifest registration
       _version="unknown"
       _checksum=""

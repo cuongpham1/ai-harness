@@ -6,7 +6,7 @@ import os from 'os';
 import path from 'path';
 import { spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
-import { normalizeStage, recordStage, resolveActiveTask } from './pipeline-checkpoint.mjs';
+import { normalizeStage, recordStage, resolveActiveTask, pruneState } from './pipeline-checkpoint.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const HOOK = path.join(__dirname, 'pipeline-checkpoint.mjs');
@@ -63,6 +63,21 @@ const written = JSON.parse(fs.readFileSync(path.join(proj, 'kg', 'runtime', 'pip
 ok(written.tasks['task-1'].lastStage === 'coder' && written.tasks['task-1'].nextStage === 'spec-reviewer',
   'hook recorded coder + nextStage spec-reviewer');
 
+// 7. pruneState drops done/missing tasks, keeps in_progress + keepId
+const pdir = fs.mkdtempSync(path.join(os.tmpdir(), 'pcp-prune-'));
+fs.writeFileSync(path.join(pdir, 'task-a.md'), '# Task: a\n**Status:** in_progress\n');
+fs.writeFileSync(path.join(pdir, 'task-b.md'), '# Task: b\n**Status:** done\n');
+// task-c.md intentionally absent (deleted)
+const dirty = { version: 1, tasks: {
+  'task-a': { nextStage: 'reviewer' },
+  'task-b': { done: true },
+  'task-c': { nextStage: 'coder' },
+} };
+const pruned = pruneState(dirty, 'task-c', pdir); // keepId=task-c survives despite missing file
+ok(pruned.tasks['task-a'] && !pruned.tasks['task-b'] && pruned.tasks['task-c'],
+  'pruneState keeps in_progress + keepId, drops done');
+
+fs.rmSync(pdir, { recursive: true, force: true });
 fs.rmSync(tmp, { recursive: true, force: true });
 fs.rmSync(proj, { recursive: true, force: true });
 console.log(`\n${pass} assertions passed`);
