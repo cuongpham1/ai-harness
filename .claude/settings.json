@@ -15,6 +15,16 @@
                 ]
             }
         ],
+        "PreCompact": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/suggest-compact.js reset"
+                    }
+                ]
+            }
+        ],
         "SubagentStop": [
             {
                 "hooks": [
@@ -29,6 +39,14 @@
                     {
                         "type": "command",
                         "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/subagent-log.js stop"
+                    }
+                ]
+            },
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/pipeline-checkpoint.mjs"
                     }
                 ]
             },

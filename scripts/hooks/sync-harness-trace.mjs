@@ -128,6 +128,8 @@ function syncSection(taskId, taskContent, section) {
   const errors = field(section.body, 'Errors') || 'none';
   const friction = field(section.body, 'Friction') || 'none';
   const decisions = field(section.body, 'Decisions');
+  const tokensMatch = section.body.match(/\*\*Tokens:\*\*\s*(\d+)/);
+  const tokens = tokensMatch ? parseInt(tokensMatch[1]) : null;
 
   // Structured action/file evidence for standard-tier traces.
   // Prefer explicit After-Work fields; fall back to derivable signals so the
@@ -170,6 +172,9 @@ function syncSection(taskId, taskContent, section) {
   }
   if (decisions) {
     args.push('--decisions', decisions);
+  }
+  if (Number.isFinite(tokens)) {
+    args.push('--tokens', String(tokens));
   }
   args.push('--notes', `task:${taskId} date:${section.date}`);
 

@@ -465,6 +465,9 @@ refresh_critical_scripts() {
     scripts/hooks/session-start-pm.js \
     scripts/hooks/run-harness-verify.mjs \
     scripts/hooks/backlog-surface.mjs \
+    scripts/hooks/pipeline-checkpoint.mjs \
+    scripts/hooks/suggest-compact.js \
+    scripts/hooks/sync-harness-trace.mjs \
     scripts/batch-verify.sh; do
     src="$HARNESS_DIR/$rel"
     dst="$TARGET/$rel"
@@ -491,6 +494,7 @@ copy_file "scripts/upgrade.sh"
 copy_file "scripts/README.md"
 copy_file "scripts/harness-cli-release-tag"
 copy_file "scripts/merge-agents-md.sh"
+copy_file "scripts/merge-settings-hooks.mjs"
 copy_file "scripts/friction-by-component.mjs"
 copy_file "scripts/verify-h3.sh"
 copy_file "scripts/verify-h4.sh"
@@ -522,6 +526,8 @@ bash "$HARNESS_DIR/scripts/merge-agents-md.sh" "$HARNESS_DIR" "$TARGET"
 if [[ "$UPGRADE_MODE" == "true" ]]; then
   refresh_stale_policy_docs
   refresh_critical_scripts
+  # settings.json is skipped-if-exists on upgrade; merge any new hook wiring.
+  node "$HARNESS_DIR/scripts/merge-settings-hooks.mjs" "$HARNESS_DIR" "$TARGET" 2>/dev/null || true
 fi
 
 # Harness CLI (durable layer)
