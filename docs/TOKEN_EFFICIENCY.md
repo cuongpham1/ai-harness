@@ -92,7 +92,12 @@ Compact **after** milestones (explore → implement), not mid-edit.
 
 ## Measuring
 
-No built-in token meter in harness. Optional:
+Harness has built-in token observability via CLI:
+
+- `scripts/bin/harness-cli query stats` for repo-level token coverage and missing-token explanations.
+- `scripts/bin/harness-cli query cost` for agent/lane token coverage, unresolved gaps, and USD estimate.
+
+Optional extra:
 
 - Caveman `/caveman-stats` (Claude Code plugin) for session estimates
 - Compare trace size / session length before vs after RTK + tiny lane discipline

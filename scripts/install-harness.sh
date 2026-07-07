@@ -35,9 +35,9 @@ Examples:
   scripts/install-harness.sh
   scripts/install-harness.sh --directory /path/to/project --yes
   scripts/install-harness.sh ./my-project --force
-  curl -fsSL https://raw.githubusercontent.com/hoangnb24/harness-experimental/main/scripts/install-harness.sh | bash -s -- --yes
-  curl -fsSL https://raw.githubusercontent.com/hoangnb24/harness-experimental/main/scripts/install-harness.sh | bash -s -- --merge --yes
-  curl -fsSL https://raw.githubusercontent.com/hoangnb24/harness-experimental/main/scripts/install-harness.sh | bash -s -- --merge --refresh-agent-shim --yes
+  curl -fsSL https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.sh | bash -s -- --yes
+  curl -fsSL https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.sh | bash -s -- --merge --yes
+  curl -fsSL https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.sh | bash -s -- --merge --refresh-agent-shim --yes
 EOF
 }
 
@@ -391,9 +391,9 @@ default_cli_base_url() {
   fi
 
   if [ -n "$release_tag" ] && [ "$release_tag" != "latest" ]; then
-    printf 'https://github.com/hoangnb24/harness-experimental/releases/download/%s\n' "$release_tag"
+    printf 'https://github.com/hoangnb24/repository-harness/releases/download/%s\n' "$release_tag"
   else
-    printf 'https://github.com/hoangnb24/harness-experimental/releases/latest/download\n'
+    printf 'https://github.com/hoangnb24/repository-harness/releases/latest/download\n'
   fi
 }
 

@@ -971,8 +971,26 @@ impl HarnessRepository for SqliteHarnessRepository {
     fn query_cost(&self) -> Result<Vec<CostRecord>> {
         let connection = self.open_existing()?;
         let mut statement = connection.prepare(
-            "SELECT trace.agent, intake.risk_lane, COUNT(*),
-                    COALESCE(SUM(trace.token_estimate), 0)
+            "SELECT
+                trace.agent,
+                intake.risk_lane,
+                COUNT(*),
+                SUM(CASE WHEN trace.token_estimate IS NOT NULL THEN 1 ELSE 0 END),
+                SUM(CASE WHEN trace.token_estimate IS NULL THEN 1 ELSE 0 END),
+                SUM(
+                    CASE
+                        WHEN trace.token_estimate IS NULL
+                             AND lower(COALESCE(trace.notes, '')) LIKE '%token%'
+                             AND (
+                                lower(COALESCE(trace.notes, '')) LIKE '%unavailable%'
+                                OR lower(COALESCE(trace.notes, '')) LIKE '%not available%'
+                                OR lower(COALESCE(trace.notes, '')) LIKE '%unknown%'
+                             )
+                        THEN 1
+                        ELSE 0
+                    END
+                ),
+                COALESCE(SUM(trace.token_estimate), 0)
              FROM trace
              LEFT JOIN intake ON intake.id = trace.intake_id
              GROUP BY trace.agent, intake.risk_lane
@@ -984,7 +1002,10 @@ impl HarnessRepository for SqliteHarnessRepository {
                 agent: row.get(0)?,
                 risk_lane: row.get(1)?,
                 runs: row.get(2)?,
-                total_tokens: row.get(3)?,
+                runs_with_tokens: row.get(3)?,
+                runs_missing_tokens: row.get(4)?,
+                missing_tokens_with_note: row.get(5)?,
+                total_tokens: row.get(6)?,
             })
         })?;
 
@@ -1000,7 +1021,21 @@ impl HarnessRepository for SqliteHarnessRepository {
                     (SELECT COUNT(*) FROM story) AS stories,
                     (SELECT COUNT(*) FROM decision) AS decisions,
                     (SELECT COUNT(*) FROM backlog) AS backlog_items,
-                    (SELECT COUNT(*) FROM trace) AS traces;",
+                    (SELECT COUNT(*) FROM trace) AS traces,
+                    (SELECT COUNT(*) FROM trace WHERE token_estimate IS NOT NULL) AS traces_with_tokens,
+                    (SELECT COUNT(*) FROM trace WHERE token_estimate IS NULL) AS traces_missing_tokens,
+                    (
+                        SELECT COUNT(*)
+                        FROM trace
+                        WHERE token_estimate IS NULL
+                          AND lower(COALESCE(notes, '')) LIKE '%token%'
+                          AND (
+                            lower(COALESCE(notes, '')) LIKE '%unavailable%'
+                            OR lower(COALESCE(notes, '')) LIKE '%not available%'
+                            OR lower(COALESCE(notes, '')) LIKE '%unknown%'
+                          )
+                    ) AS traces_missing_tokens_with_note,
+                    (SELECT COALESCE(SUM(token_estimate), 0) FROM trace) AS total_tokens;",
                 [],
                 |row| {
                     Ok(HarnessStats {
@@ -1009,6 +1044,10 @@ impl HarnessRepository for SqliteHarnessRepository {
                         decisions: row.get(2)?,
                         backlog_items: row.get(3)?,
                         traces: row.get(4)?,
+                        traces_with_tokens: row.get(5)?,
+                        traces_missing_tokens: row.get(6)?,
+                        traces_missing_tokens_with_note: row.get(7)?,
+                        total_tokens: row.get(8)?,
                     })
                 },
             )

@@ -8,7 +8,7 @@
 `/Users/cuongpham/flutter_package_manage/vnd_flutter_dstock`
 
 ## Current state of target
-- harness-cli: v0.1.7 (needs v0.1.10)
+- harness-cli: legacy baseline (needs v0.1.10)
 - .harness-profile: flutter
 - .gitignore: has harness entries but missing some
 - schema: version 2 (needs migrations 003-005)
@@ -74,7 +74,7 @@ docs/security-audit-*.md
 ### After-Work — 2026-06-29
 **Agent:** pm
 **Outcome:** partial
-**Done:** coder agent dispatched to upgrade harness in vnd_flutter_dstock from v0.1.7 to v0.1.10 — binary upgrade, schema migrate 003-005, sync hooks + new scripts + docs + .gitignore; still running in background
+**Done:** coder agent dispatched to upgrade harness in vnd_flutter_dstock from legacy baseline to v0.1.10 — binary upgrade, schema migrate 003-005, sync hooks + new scripts + docs + .gitignore; still running in background
 **Files changed:** none yet — agent in progress
 **Errors:** none
 **Friction:** none
@@ -84,7 +84,7 @@ docs/security-audit-*.md
 ### After-Work — 2026-06-29
 **Agent:** coder
 **Outcome:** completed
-**Done:** Upgraded harness in vnd_flutter_dstock from v0.1.7 to v0.1.10 — synced binary, schema migrations 003-005 (DB now at version 5), updated sync-harness-trace hook (6873 bytes), all new scripts/docs, and .gitignore entries; no Flutter source touched.
+**Done:** Upgraded harness in vnd_flutter_dstock from legacy baseline to v0.1.10 — synced binary, schema migrations 003-005 (DB now at version 5), updated sync-harness-trace hook (6873 bytes), all new scripts/docs, and .gitignore entries; no Flutter source touched.
 **Actions:** read task file, checked source/target versions, copied harness-cli binary + chmod, copied schema 003/004/005, ran migrate (applied 3 migrations -> v5), synced sync-harness-trace.mjs, copied 14 new scripts + chmod shell scripts, copied utils/, copied 7 docs + 8 US stories, edited .gitignore, ran full verification, confirmed no Flutter source changed via git status
 **Files read:** .project-manager/tasks/harness-upgrade-flutter-001.md, TARGET/.gitignore, TARGET/.harness-profile
 **Files changed (all in TARGET /Users/cuongpham/flutter_package_manage/vnd_flutter_dstock):** scripts/bin/harness-cli, scripts/schema/003-tool-registry.sql, scripts/schema/004-intervention.sql, scripts/schema/005-tool-extensions.sql, scripts/hooks/sync-harness-trace.mjs, scripts/apply-proposal.sh, scripts/h5-structural-audit.mjs, scripts/install-skills.sh, scripts/instinct-tracker.mjs, scripts/list-profiles.mjs, scripts/profile-manifest.mjs, scripts/propose-change.mjs, scripts/security-shield.mjs, scripts/verify-h5.sh, scripts/upgrade.sh, scripts/sync-cursor-agents.mjs, scripts/install-cursor-layer.sh, scripts/build-harness-cli-release.sh, scripts/harness-cli-release-tag, scripts/utils/*, docs/HARNESS_AUDIT.md, docs/IMPROVEMENT_PROTOCOL.md, docs/TOOL_REGISTRY.md, PHASE5.md, CHANGELOG.md, CLAUDE.md, .gitattributes, docs/stories/US-019..US-027 (8 files, US-026 absent in source), .gitignore, harness.db (migrated)

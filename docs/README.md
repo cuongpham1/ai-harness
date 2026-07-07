@@ -35,7 +35,7 @@ Operational records live in `harness.db` (gitignored), managed by
 
 ## Upstream
 
-Docs and CLI track [harness-experimental](https://github.com/hoangnb24/harness-experimental).
+Docs and CLI track [repository-harness](https://github.com/hoangnb24/repository-harness).
 Update with:
 
 ```bash

@@ -588,7 +588,7 @@ install_harness_cli() {
   fi
 
   local tag
-  tag="$(cat "$HARNESS_DIR/scripts/harness-cli-release-tag" 2>/dev/null || echo harness-cli-v0.1.7)"
+  tag="$(cat "$HARNESS_DIR/scripts/harness-cli-release-tag" 2>/dev/null || echo harness-cli-v0.1.11)"
   local arch platform os_name
   arch="$(uname -m)"
   os_name="$(uname -s)"
@@ -602,7 +602,7 @@ install_harness_cli() {
       return
       ;;
   esac
-  local base="https://github.com/hoangnb24/harness-experimental/releases/download/${tag}"
+  local base="https://github.com/hoangnb24/repository-harness/releases/download/${tag}"
   if command -v curl &>/dev/null; then
     if curl -fsSL "$base/harness-cli-${platform}" -o "$cli_dst" \
       && curl -fsSL "$base/harness-cli-${platform}.sha256" -o /tmp/harness-cli.sha256.$$; then

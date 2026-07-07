@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-07-07 - Manual Update
+
+- chore(cli): bump installer CLI pin to `harness-cli-v0.1.11` and sync docs to current command surface
+- feat(p0-token-analytics): add token coverage observability in `query cost` and `query stats`, plus stronger trace token parsing/signal in Stop hook
+- Harness CLI release: `harness-cli-v0.1.11`
+- Changed files:
+  - `scripts/harness-cli-release-tag`
+  - `install.sh`
+  - `scripts/install-harness.sh`
+  - `README.md`
+  - `scripts/README.md`
+  - `docs/HARNESS_VERIFICATION.md`
+  - `docs/README.md`
+  - `docs/TOKEN_EFFICIENCY.md`
+  - `crates/harness-cli/src/domain.rs`
+  - `crates/harness-cli/src/infrastructure.rs`
+  - `crates/harness-cli/src/interface.rs`
+  - `scripts/hooks/sync-harness-trace.mjs`
+
 ## 2026-06-15 - PR #20
 
 - fix: add missing files to installer file lists (@NguyenQS504092s)

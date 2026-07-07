@@ -10,17 +10,23 @@ Harness work.
 
 ```bash
 scripts/bin/harness-cli init          # Create the database
-scripts/bin/harness-cli migrate       # Apply schema migrations (e.g. 002-story-verify)
+scripts/bin/harness-cli migrate       # Apply schema migrations
 scripts/bin/harness-cli intake ...    # Record a feature intake classification
 scripts/bin/harness-cli story add ... # Add a story (optional --verify "cmd")
 scripts/bin/harness-cli story update ...  # Proof flags: --unit 1 --integration 1 (not yes/no)
-scripts/bin/harness-cli story verify <id>  # Run story verify_command (Phase 4 / v0.1.7+)
+scripts/bin/harness-cli story verify <id>  # Run one story verify_command
+scripts/bin/harness-cli story verify-all   # Verify every story that has verify_command
 scripts/bin/harness-cli decision ...  # Add a decision or run its verification
 scripts/bin/harness-cli backlog ...   # Add or close a backlog item
+scripts/bin/harness-cli tool ...      # Register/check/remove external tools
+scripts/bin/harness-cli intervention ...  # Record interventions
 scripts/bin/harness-cli trace ...     # Record an agent execution trace
 scripts/bin/harness-cli score-trace   # Score a trace against TRACE_SPEC.md tiers
+scripts/bin/harness-cli score-context # Score trace context reads against CONTEXT_RULES.md
+scripts/bin/harness-cli audit         # Run drift audit and entropy score
+scripts/bin/harness-cli propose       # Generate improvement proposals
+scripts/bin/harness-cli db ...        # Manage database changesets
 scripts/bin/harness-cli query ...     # Query harness data, including backlog --open/--closed
-scripts/bin/harness-cli migrate       # Apply pending schema migrations
 ```
 
 Run `scripts/bin/harness-cli help` or `scripts/bin/harness-cli query help` for full usage.
@@ -28,7 +34,7 @@ Run `scripts/bin/harness-cli help` or `scripts/bin/harness-cli query help` for f
 The schema lives in `scripts/schema/` (`001-init.sql`, `002-story-verify.sql`) and is
 version-controlled. The database file (`harness.db`) is `.gitignore`d.
 
-**CLI version:** source and release pin **0.1.7** ([harness-experimental tag](https://github.com/hoangnb24/harness-experimental/tree/harness-cli-v0.1.7)). Rebuild locally:
+**CLI version:** source installer pin **0.1.11** via `scripts/harness-cli-release-tag` ([repository-harness release](https://github.com/hoangnb24/repository-harness/releases/tag/harness-cli-v0.1.11)). Rebuild locally:
 
 ```bash
 cargo build --release -p harness-cli
@@ -78,9 +84,15 @@ scripts/bin/harness-cli query decisions
 scripts/bin/harness-cli query intakes
 scripts/bin/harness-cli query traces
 scripts/bin/harness-cli query friction
+scripts/bin/harness-cli query cost
+scripts/bin/harness-cli query tools
+scripts/bin/harness-cli query interventions
 scripts/bin/harness-cli query stats
 scripts/bin/harness-cli query sql ...
 ```
+
+`query cost` now reports token coverage by agent/lane (`with_tokens`, `missing_w_note`, `missing_wo_note`) plus USD estimate via `HARNESS_USD_PER_MTOK`.
+`query stats` includes repo-level token observability (`with_tokens`, coverage, missing with/without note).
 
 `scripts/bin/harness-cli import brownfield` seeds or refreshes the durable database
 from existing Harness v0 markdown in `docs/TEST_MATRIX.md`,
@@ -104,15 +116,15 @@ shim. Use `--override` only when replacing the protected Harness surface is
 intentional.
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/hoangnb24/harness-experimental/main/scripts/install-harness.sh?$(date +%s)" | bash -s -- --yes
+curl -fsSL "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.sh?$(date +%s)" | bash -s -- --yes
 ```
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/hoangnb24/harness-experimental/main/scripts/install-harness.sh?$(date +%s)" | bash -s -- --merge --yes
+curl -fsSL "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.sh?$(date +%s)" | bash -s -- --merge --yes
 ```
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/hoangnb24/harness-experimental/main/scripts/install-harness.sh?$(date +%s)" | bash -s -- --merge --refresh-agent-shim --yes
+curl -fsSL "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.sh?$(date +%s)" | bash -s -- --merge --refresh-agent-shim --yes
 ```
 
 `--refresh-agent-shim` backs up `AGENTS.md` before changing it. If the existing
@@ -128,9 +140,8 @@ payload.
 
 By default the installer also downloads the prebuilt Rust Harness CLI for the
 current platform into `scripts/bin/harness-cli` and verifies its `.sha256`
-checksum before making it executable. A source branch can pin the release used
-by the installer through `scripts/harness-cli-release-tag`; Phase 3 pins
-`harness-cli-v0.1.4` so branch installs receive a Phase 3-built CLI. Set
+checksum before making it executable. The release is pinned through
+`scripts/harness-cli-release-tag` (currently `harness-cli-v0.1.11`). Set
 `HARNESS_CLI_RELEASE_TAG` to override that tag, or set `HARNESS_CLI_BASE_URL` to
 point at an alternate artifact directory, such as a local `file:///.../dist`
 directory created by `scripts/build-harness-cli-release.sh`.

@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -812,46 +813,120 @@ fn print_chain_verify(result: &ChainVerifyResult) {
 fn print_cost(records: &[CostRecord]) {
     // Blended rate keeps cost attribution honest about precision — token_estimate
     // is approximate, so this is for relative visibility, not accounting.
-    let rate: f64 = env::var("HARNESS_USD_PER_MTOK")
-        .ok()
-        .and_then(|value| value.parse().ok())
-        .unwrap_or(3.0);
+    let rate = usd_rate();
 
-    let mut total_tokens = 0i64;
     let mut total_runs = 0i64;
+    let mut total_runs_with_tokens = 0i64;
+    let mut total_runs_missing_tokens = 0i64;
+    let mut total_missing_with_note = 0i64;
+    let mut total_tokens = 0i64;
+    let mut lane_rollup: BTreeMap<String, (i64, i64, i64, i64, i64)> = BTreeMap::new();
+
     let mut rows: Vec<Vec<String>> = records
         .iter()
         .map(|record| {
-            total_tokens += record.total_tokens;
             total_runs += record.runs;
-            let usd = record.total_tokens as f64 / 1_000_000.0 * rate;
+            total_runs_with_tokens += record.runs_with_tokens;
+            total_runs_missing_tokens += record.runs_missing_tokens;
+            total_missing_with_note += record.missing_tokens_with_note;
+            total_tokens += record.total_tokens;
+
+            let lane = record.risk_lane.clone().unwrap_or_else(|| "-".to_owned());
+            let lane_stats = lane_rollup.entry(lane.clone()).or_insert((0, 0, 0, 0, 0));
+            lane_stats.0 += record.runs;
+            lane_stats.1 += record.runs_with_tokens;
+            lane_stats.2 += record.runs_missing_tokens;
+            lane_stats.3 += record.missing_tokens_with_note;
+            lane_stats.4 += record.total_tokens;
+
+            let missing_without_note = missing_without_note(
+                record.runs_missing_tokens,
+                record.missing_tokens_with_note,
+            );
+
             vec![
                 record.agent.clone().unwrap_or_else(|| "-".to_owned()),
-                record.risk_lane.clone().unwrap_or_else(|| "-".to_owned()),
+                lane,
                 record.runs.to_string(),
+                record.runs_with_tokens.to_string(),
+                percent(record.runs_with_tokens, record.runs),
+                record.runs_missing_tokens.to_string(),
+                record.missing_tokens_with_note.to_string(),
+                missing_without_note.to_string(),
                 record.total_tokens.to_string(),
-                format!("{usd:.4}"),
+                format!("{:.4}", tokens_to_usd(record.total_tokens, rate)),
             ]
         })
         .collect();
 
-    let total_usd = total_tokens as f64 / 1_000_000.0 * rate;
     rows.push(vec![
         "TOTAL".to_owned(),
         "-".to_owned(),
         total_runs.to_string(),
+        total_runs_with_tokens.to_string(),
+        percent(total_runs_with_tokens, total_runs),
+        total_runs_missing_tokens.to_string(),
+        total_missing_with_note.to_string(),
+        missing_without_note(total_runs_missing_tokens, total_missing_with_note).to_string(),
         total_tokens.to_string(),
-        format!("{total_usd:.4}"),
+        format!("{:.4}", tokens_to_usd(total_tokens, rate)),
     ]);
 
     let usd_header = format!("usd@{rate:.1}/Mtok");
     print_table(
-        &["agent", "lane", "runs", "tokens", usd_header.as_str()],
+        &[
+            "agent",
+            "lane",
+            "runs",
+            "with_tokens",
+            "coverage",
+            "missing",
+            "missing_w_note",
+            "missing_wo_note",
+            "tokens",
+            usd_header.as_str(),
+        ],
         &rows,
     );
+
+    if !lane_rollup.is_empty() {
+        println!();
+        println!("Lane token coverage:");
+        let lane_rows = lane_rollup
+            .into_iter()
+            .map(|(lane, (runs, with_tokens, missing_tokens, missing_with_note, tokens))| {
+                vec![
+                    lane,
+                    runs.to_string(),
+                    with_tokens.to_string(),
+                    percent(with_tokens, runs),
+                    missing_tokens.to_string(),
+                    missing_with_note.to_string(),
+                    missing_without_note(missing_tokens, missing_with_note).to_string(),
+                    tokens.to_string(),
+                    format!("{:.4}", tokens_to_usd(tokens, rate)),
+                ]
+            })
+            .collect::<Vec<_>>();
+        print_table(
+            &[
+                "lane",
+                "runs",
+                "with_tokens",
+                "coverage",
+                "missing",
+                "missing_w_note",
+                "missing_wo_note",
+                "tokens",
+                usd_header.as_str(),
+            ],
+            &lane_rows,
+        );
+    }
 }
 
 fn print_stats(stats: &HarnessStats) {
+    let rate = usd_rate();
     println!("=== Harness Stats ===");
     print_table(
         &["intakes", "stories", "decisions", "backlog_items", "traces"],
@@ -863,6 +938,56 @@ fn print_stats(stats: &HarnessStats) {
             stats.traces.to_string(),
         ]],
     );
+
+    println!();
+    let usd_header = format!("usd@{rate:.1}/Mtok");
+    print_table(
+        &[
+            "with_tokens",
+            "coverage",
+            "missing",
+            "missing_w_note",
+            "missing_wo_note",
+            "total_tokens",
+            usd_header.as_str(),
+        ],
+        &[vec![
+            stats.traces_with_tokens.to_string(),
+            percent(stats.traces_with_tokens, stats.traces),
+            stats.traces_missing_tokens.to_string(),
+            stats.traces_missing_tokens_with_note.to_string(),
+            missing_without_note(
+                stats.traces_missing_tokens,
+                stats.traces_missing_tokens_with_note,
+            )
+            .to_string(),
+            stats.total_tokens.to_string(),
+            format!("{:.4}", tokens_to_usd(stats.total_tokens, rate)),
+        ]],
+    );
+}
+
+fn usd_rate() -> f64 {
+    env::var("HARNESS_USD_PER_MTOK")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(3.0)
+}
+
+fn tokens_to_usd(tokens: i64, usd_per_mtok: f64) -> f64 {
+    tokens as f64 / 1_000_000.0 * usd_per_mtok
+}
+
+fn percent(part: i64, total: i64) -> String {
+    if total <= 0 {
+        return "0.0%".to_owned();
+    }
+    let pct = part as f64 * 100.0 / total as f64;
+    format!("{pct:.1}%")
+}
+
+fn missing_without_note(missing: i64, missing_with_note: i64) -> i64 {
+    (missing - missing_with_note).max(0)
 }
 
 fn print_query_table(table: &QueryTable) {

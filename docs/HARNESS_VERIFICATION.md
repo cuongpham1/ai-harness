@@ -20,7 +20,7 @@ bash scripts/verify-story.sh --dry-run
 bash scripts/verify-h4.sh
 ```
 
-**Durable layer (upstream Phase 4, CLI 0.1.7+):**
+**Durable layer (upstream Phase 4, CLI 0.1.11+):**
 
 ```bash
 scripts/bin/harness-cli migrate
@@ -28,7 +28,7 @@ scripts/bin/harness-cli story add --id US-001 --title "..." --lane normal --veri
 scripts/bin/harness-cli story verify US-001
 ```
 
-Use `--unit 1` / `--integration 1` on `story update` (numeric flags, not `yes`/`no`). See [harness-experimental harness-cli-v0.1.7](https://github.com/hoangnb24/harness-experimental/tree/harness-cli-v0.1.7).
+Use `--unit 1` / `--integration 1` on `story update` (numeric flags, not `yes`/`no`). See [repository-harness harness-cli-v0.1.11](https://github.com/hoangnb24/repository-harness/releases/tag/harness-cli-v0.1.11).
 
 ## Lane behavior
 

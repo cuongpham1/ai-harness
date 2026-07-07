@@ -2,7 +2,7 @@
 
 **Repository:** [github.com/cuongpham1/ai-harness](https://github.com/cuongpham1/ai-harness)
 
-Repo này là **bộ cài đặt (installer)** — không phải ứng dụng chạy trực tiếp. Chạy `install.sh` để gắn quy trình agent, hooks, tài liệu và lớp dữ liệu bền (`harness.db`) vào **dự án đích** của bạn. Kết hợp [harness-experimental](https://github.com/hoangnb24/harness-experimental) (CLI, trace, maturity) với pipeline đa agent (Claude Code + Cursor).
+Repo này là **bộ cài đặt (installer)** — không phải ứng dụng chạy trực tiếp. Chạy `install.sh` để gắn quy trình agent, hooks, tài liệu và lớp dữ liệu bền (`harness.db`) vào **dự án đích** của bạn. Kết hợp [repository-harness](https://github.com/hoangnb24/repository-harness) (CLI, trace, maturity) với pipeline đa agent (Claude Code + Cursor).
 
 ---
 
@@ -131,16 +131,19 @@ Cập nhật `**Status:** done` trong task file sau khi pipeline + verify pass.
 
 ## Lệnh `harness-cli` (trong dự án đã cài)
 
-Binary: `scripts/bin/harness-cli` (v **0.1.7**, tải lúc `install.sh`).
+Binary: `scripts/bin/harness-cli` (pin **0.1.11** qua `scripts/harness-cli-release-tag`, tải lúc `install.sh`).
 
 ```bash
 cd /đường/dẫn/dự-án-đã-cài
 
 scripts/bin/harness-cli init              # Tạo harness.db (lần đầu)
-scripts/bin/harness-cli migrate           # Migration 002 (story verify)
+scripts/bin/harness-cli migrate           # Apply schema migrations
 scripts/bin/harness-cli query stats       # Tổng quan
+scripts/bin/harness-cli query cost        # Cost + token coverage theo agent/lane
 scripts/bin/harness-cli query matrix      # Story / proof matrix
 scripts/bin/harness-cli query friction    # Friction gần đây
+scripts/bin/harness-cli query tools       # Tool registry (compiled + registered)
+scripts/bin/harness-cli query interventions # Intervention records
 ```
 
 | Nhóm lệnh | Ví dụ |
@@ -150,8 +153,13 @@ scripts/bin/harness-cli query friction    # Friction gần đây
 | **decision** | `decision add`, `decision verify ADR-001` |
 | **trace** | `trace --summary "..." --agent coder --outcome completed` |
 | **score-trace** | Chấm trace mới nhất theo [TRACE_SPEC](docs/TRACE_SPEC.md) |
+| **score-context** | Chấm mức đủ context theo [CONTEXT_RULES](docs/CONTEXT_RULES.md) |
+| **tool** | `tool register`, `tool check`, `tool remove` |
+| **intervention** | `intervention add --type correction ...` |
+| **audit/propose** | `audit`, `propose [--commit]` |
+| **db** | `db ...` (quản lý changeset DB) |
 | **backlog** | Ghi đề xuất cải thiện harness |
-| **query** | matrix, backlog, traces, sql, … |
+| **query** | matrix, backlog, traces, friction, cost (coverage), stats (token observability), sql, … |
 
 **Lưu ý:** Proof flags dùng số: `--unit 1 --integration 1`, **không** dùng `yes`/`no`.
 
@@ -326,7 +334,7 @@ bash scripts/apply-proposal.sh --id PROP-001 --approve-risk=high --skip-shield  
 
 ## Upstream
 
-CLI và nhiều doc theo [harness-experimental](https://github.com/hoangnb24/harness-experimental) (release [harness-cli-v0.1.7](https://github.com/hoangnb24/harness-experimental/tree/harness-cli-v0.1.7)). Repo **ai-harness** thêm: 12 framework, `install.sh`, Cursor layer, `verify-story.sh`, benchmark installer.
+CLI và nhiều doc theo [repository-harness](https://github.com/hoangnb24/repository-harness) (release [harness-cli-v0.1.11](https://github.com/hoangnb24/repository-harness/releases/tag/harness-cli-v0.1.11)). Repo **ai-harness** thêm: 12 framework, `install.sh`, Cursor layer, `verify-story.sh`, benchmark installer.
 
 ---
 

@@ -8,7 +8,7 @@
 `/Users/cuongpham/ziwei-doushu`
 
 ## Current state
-- harness-cli: v0.1.7 (needs v0.1.10)
+- harness-cli: legacy baseline (needs v0.1.10)
 - .harness-profile: nextjs
 - schema: version 2 (needs migrations 003-005)
 - CRITICAL: .gitignore ignores `.claude/`, `.cursor/`, `scripts/`, `templates/`, `AGENTS.md` — team gets nothing
@@ -69,7 +69,7 @@ After gitignore fix, git add all harness files that should be tracked.
 ### After-Work — 2026-06-29
 **Agent:** pm
 **Outcome:** partial
-**Done:** coder agent dispatched to upgrade harness in ziwei-doushu from v0.1.7 to v0.1.10, fix critical gitignore (remove .claude/ .cursor/ scripts/ templates/ AGENTS.md .harness-profile), commit all harness infrastructure; still running in background
+**Done:** coder agent dispatched to upgrade harness in ziwei-doushu from legacy baseline to v0.1.10, fix critical gitignore (remove .claude/ .cursor/ scripts/ templates/ AGENTS.md .harness-profile), commit all harness infrastructure; still running in background
 **Actions:** created task file, analyzed gitignore issues, delegated to coder
 **Files read:** /Users/cuongpham/ziwei-doushu/.gitignore, ziwei scripts/ structure
 **Files changed:** .project-manager/tasks/harness-upgrade-ziwei-001.md
@@ -87,5 +87,5 @@ After gitignore fix, git add all harness files that should be tracked.
 **Files changed:** /Users/cuongpham/ziwei-doushu/.gitignore, scripts/bin/harness-cli, scripts/schema/003-005, scripts/hooks/sync-harness-trace.mjs, +143 new harness files (commit f0e8350)
 **Errors:** none (grep "^\.claude" false-positive matched new settings-backup entries; git check-ignore confirmed .claude/ dir trackable, binary+db+settings.local still ignored)
 **Friction:** none
-**Decisions:** committed directly to main in target per explicit task spec (target is a separate repo); added ADMIN_GUIDE.md explicitly (git add -u missed untracked); source harness-cli-release-tag identical (both v0.1.7) so left as-is; kept existing .project-manager/tasks/ ignore line (not in removal list)
-**Risks/Blockers:** SOURCE scripts/harness-cli-release-tag still reads v0.1.7 despite binary being 0.1.10 — stale tag in source repo, out of scope. Team must download OS-specific binary before `migrate` (binary intentionally gitignored).
+**Decisions:** committed directly to main in target per explicit task spec (target is a separate repo); added ADMIN_GUIDE.md explicitly (git add -u missed untracked); source harness-cli-release-tag stayed on the same legacy pin as target baseline at that time, so left as-is; kept existing .project-manager/tasks/ ignore line (not in removal list)
+**Risks/Blockers:** SOURCE scripts/harness-cli-release-tag was still on an outdated release pin despite binary being 0.1.10 — stale tag in source repo, out of scope. Team must download OS-specific binary before `migrate` (binary intentionally gitignored).

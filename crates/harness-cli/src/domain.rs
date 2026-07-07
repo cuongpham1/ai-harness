@@ -381,6 +381,9 @@ pub struct CostRecord {
     pub agent: Option<String>,
     pub risk_lane: Option<String>,
     pub runs: i64,
+    pub runs_with_tokens: i64,
+    pub runs_missing_tokens: i64,
+    pub missing_tokens_with_note: i64,
     pub total_tokens: i64,
 }
 
@@ -391,6 +394,10 @@ pub struct HarnessStats {
     pub decisions: i64,
     pub backlog_items: i64,
     pub traces: i64,
+    pub traces_with_tokens: i64,
+    pub traces_missing_tokens: i64,
+    pub traces_missing_tokens_with_note: i64,
+    pub total_tokens: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

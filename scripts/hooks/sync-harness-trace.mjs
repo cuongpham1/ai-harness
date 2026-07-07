@@ -17,6 +17,17 @@ const stateFile = path.join(cwd, 'kg', 'runtime', 'trace-sync-state.json');
 const intakeMapFile = path.join(cwd, 'kg', 'runtime', 'task-intake-map.json');
 const cliPath = path.join(cwd, 'scripts', 'bin', 'harness-cli');
 
+const FRICTION_TAGS = new Set([
+  'docs-stale',
+  'context-bloat',
+  'hook-gap',
+  'proof-gap',
+  'dual-track',
+  'tool-gap',
+  'perm-gap',
+  'memory-gap',
+]);
+
 function readFileSafe(p) {
   try { return fs.readFileSync(p, 'utf8'); } catch { return null; }
 }
@@ -49,10 +60,108 @@ function parseAfterWorkSections(content) {
   return sections;
 }
 
-function field(body, name) {
-  const re = new RegExp(`\\*\\*${name}:\\*\\*\\s*(.+?)(?=\\n\\*\\*|$)`, 'is');
-  const m = body.match(re);
-  return m ? m[1].trim().replace(/\s+/g, ' ') : '';
+function parseSectionFields(body) {
+  const fields = {};
+  const matches = [...body.matchAll(/\*\*([^*\n]{1,60}):\*\*\s*/g)];
+  for (let i = 0; i < matches.length; i++) {
+    const name = matches[i][1].trim().toLowerCase();
+    const start = matches[i].index + matches[i][0].length;
+    const end = i + 1 < matches.length ? matches[i + 1].index : body.length;
+    const value = body.slice(start, end).trim();
+    if (!Object.prototype.hasOwnProperty.call(fields, name) || !fields[name]) {
+      fields[name] = value;
+    }
+  }
+  return fields;
+}
+
+function sectionField(fields, name, compact = true) {
+  const value = fields[name.toLowerCase()] || '';
+  if (!compact) return value;
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function parseTokens(fields) {
+  const raw = sectionField(fields, 'Tokens');
+  if (!raw) return null;
+
+  // Accept common token formats: "52000", "52,000", "52k", "1.2m".
+  const lower = raw.toLowerCase();
+  const m = lower.match(/(\d[\d,._\s]*)([km])?/);
+  if (!m) return null;
+
+  const digits = (m[1] || '').replace(/[^\d]/g, '');
+  if (!digits) return null;
+
+  let value = parseInt(digits, 10);
+  if (!Number.isFinite(value) || value <= 0) return null;
+
+  const suffix = m[2];
+  if (suffix === 'k') value *= 1000;
+  if (suffix === 'm') value *= 1000000;
+
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function laneNeedsTokenEstimate(lane) {
+  return lane === 'normal' || lane === 'high_risk';
+}
+
+function normalizeSummary(raw) {
+  const text = (raw || '').trim();
+  if (!text) return '';
+  const firstLine = text
+    .split('\n')
+    .map(line => line.trim())
+    .find(Boolean) || '';
+  return firstLine.replace(/^[-*]\s+/, '').replace(/\s+/g, ' ').trim();
+}
+
+function normalizeScalar(raw) {
+  return (raw || '').replace(/^[-*]\s+/, '').replace(/\s+/g, ' ').trim();
+}
+
+function normalizeMultilineListText(raw) {
+  const text = (raw || '').trim();
+  if (!text) return '';
+  return text
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => line.replace(/^[-*]\s+/, '').trim())
+    .join(' | ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function notesExplainMissing(text, fieldName) {
+  const lower = (text || '').toLowerCase();
+  return lower.includes(fieldName)
+    && (lower.includes('unavailable') || lower.includes('not available') || lower.includes('unknown'));
+}
+
+function normalizeFriction(rawFriction, lane, taskId, sectionDate) {
+  const value = normalizeScalar(rawFriction);
+  if (!value || /^none$/i.test(value)) {
+    return { value: 'none', note: null };
+  }
+
+  if (!(lane === 'normal' || lane === 'high_risk')) {
+    return { value, note: null };
+  }
+
+  const match = value.match(/^([a-z][a-z0-9-]*)\s*:/i);
+  if (match && FRICTION_TAGS.has(match[1].toLowerCase())) {
+    return { value, note: null };
+  }
+
+  process.stderr.write(
+    `[sync-harness-trace] ${taskId}:${sectionDate} invalid friction tag for lane ${lane}; auto-tagging as tool-gap\n`,
+  );
+  return {
+    value: `tool-gap: ${value}`,
+    note: 'friction tag normalized: tool-gap',
+  };
 }
 
 function taskField(content, name) {
@@ -105,9 +214,20 @@ function resolveIntakeId(taskId, taskContent) {
   return null;
 }
 
-function splitList(raw) {
+function splitList(raw, opts = {}) {
+  const extractCodeToken = opts.extractCodeToken === true;
   if (!raw || /^none$/i.test(raw)) return [];
-  return raw.split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
+  return raw
+    .split(/[,;\n]/)
+    .map(s => s.trim())
+    .map(s => s.replace(/^[-*]\s+/, '').trim())
+    .map(s => {
+      if (!extractCodeToken) return s;
+      const m = s.match(/`([^`]+)`/);
+      if (m) return m[1].trim();
+      return s.replace(/\s+[—-]\s+.*$/, '').trim();
+    })
+    .filter(Boolean);
 }
 
 /**
@@ -140,28 +260,40 @@ function syncSection(taskId, taskContent, section) {
   const state = loadState();
   if (state[stateKey]) return false;
 
-  const summary = field(section.body, 'Done') || field(section.body, 'Summary');
+  const fields = parseSectionFields(section.body);
+  const lane = normalizeLane(taskField(taskContent, 'Lane'));
+
+  const summary = normalizeSummary(
+    sectionField(fields, 'Done', false) || sectionField(fields, 'Summary', false),
+  );
   if (!summary || summary.length < 10) return false;
 
-  const outcome = (field(section.body, 'Outcome') || 'completed').toLowerCase();
-  const agent = field(section.body, 'Agent') || 'unknown';
-  const storyId = field(section.body, 'Story ID') || taskField(taskContent, 'Story ID');
+  const outcome = (normalizeScalar(sectionField(fields, 'Outcome')) || 'completed').toLowerCase();
+  const agent = normalizeScalar(sectionField(fields, 'Agent')) || 'unknown';
+  const storyId = sectionField(fields, 'Story ID') || taskField(taskContent, 'Story ID');
   const storyHeader = taskContent.match(/\*\*Story ID:\*\*\s*(\S+)/);
   const story = storyId || (storyHeader ? storyHeader[1] : '');
-  const filesChanged = splitList(field(section.body, 'Files changed') || field(section.body, 'Files'));
-  const errors = field(section.body, 'Errors') || 'none';
-  const friction = field(section.body, 'Friction') || 'none';
-  const decisions = field(section.body, 'Decisions');
-  const tokensMatch = section.body.match(/\*\*Tokens:\*\*\s*(\d+)/);
-  const tokens = tokensMatch ? parseInt(tokensMatch[1]) : null;
+  const filesChanged = splitList(
+    sectionField(fields, 'Files changed', false) || sectionField(fields, 'Files', false),
+    { extractCodeToken: true },
+  );
+  const errors = normalizeScalar(sectionField(fields, 'Errors')) || 'none';
+  const frictionRaw = sectionField(fields, 'Friction') || 'none';
+  const frictionNormalized = normalizeFriction(frictionRaw, lane, taskId, section.date);
+  let friction = frictionNormalized.value;
+  const decisions = normalizeMultilineListText(sectionField(fields, 'Decisions', false));
+  const tokens = parseTokens(fields);
 
   // Structured action/file evidence for standard-tier traces.
   // Prefer explicit After-Work fields; fall back to derivable signals so the
   // trace still reaches `standard` when an agent omits them.
-  let actions = splitList(field(section.body, 'Actions') || field(section.body, 'Actions taken'));
+  let actions = splitList(sectionField(fields, 'Actions', false) || sectionField(fields, 'Actions taken', false));
   if (!actions.length && summary) actions = [summary];
 
-  let filesRead = splitList(field(section.body, 'Files read') || field(section.body, 'Read'));
+  let filesRead = splitList(
+    sectionField(fields, 'Files read', false) || sectionField(fields, 'Read', false),
+    { extractCodeToken: true },
+  );
   if (!filesRead.length && filesChanged.length) {
     // Editing a file implies it was read first (read-before-edit convention).
     filesRead = filesChanged.slice();
@@ -202,7 +334,31 @@ function syncSection(taskId, taskContent, section) {
   }
 
   // Honesty check: flag claimed changed files git can't corroborate.
-  let note = `task:${taskId} date:${section.date}`;
+  const noteParts = [`task:${taskId}`, `date:${section.date}`];
+
+  if (laneNeedsTokenEstimate(lane) && !Number.isFinite(tokens)) {
+    const notesField = sectionField(fields, 'Notes');
+    const explainsMissing = notesExplainMissing(section.body, 'token') || notesExplainMissing(notesField, 'token');
+
+    if (friction === 'none') {
+      friction = 'tool-gap: token-estimate-missing';
+      noteParts.push('friction inferred: tool-gap token-estimate-missing');
+    }
+
+    if (explainsMissing) {
+      noteParts.push('token unavailable: noted in after-work');
+    } else {
+      process.stderr.write(
+        `[sync-harness-trace] ${taskId}:${section.date} missing **Tokens:** for lane ${lane}; recording token unavailable in notes\n`,
+      );
+      noteParts.push('token unavailable: not provided in after-work');
+    }
+  }
+
+  if (frictionNormalized.note) {
+    noteParts.push(frictionNormalized.note);
+  }
+
   if (filesChanged.length) {
     const touched = gitTouchedFiles();
     if (touched) {
@@ -211,11 +367,11 @@ function syncSection(taskId, taskContent, section) {
         process.stderr.write(
           `[sync-harness-trace] ${taskId}: ${unverified.length} claimed changed file(s) not seen by git: ${unverified.join(', ')}\n`,
         );
-        note += ` unverified-files:${unverified.length}`;
+        noteParts.push(`unverified-files:${unverified.length}`);
       }
     }
   }
-  args.push('--notes', note);
+  args.push('--notes', noteParts.join(' '));
 
   try {
     execFileSync(cliPath, args, { cwd, stdio: 'pipe', timeout: 15000 });
