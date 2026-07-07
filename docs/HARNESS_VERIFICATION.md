@@ -45,6 +45,11 @@ After handoff, trace sync, and score-trace:
 1. `run-harness-verify.mjs` — calls `verify-story.sh` only when **Outcome: completed** (deduped per After-Work)
 2. `sync-harness-story.mjs` — task **Story ID** / **Status** → `harness-cli story` (`implemented` only if verify-last.json passed)
 
+Optional Stop hook:
+
+- `export-langfuse-trace.mjs` — when `HARNESS_LANGFUSE_ENABLED=1`, exports
+	newly synced traces to Langfuse without blocking the session.
+
 Set `HARNESS_VERIFY_BLOCK=0` to warn without blocking (exit 2).
 
 ## Proof report

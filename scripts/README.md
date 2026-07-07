@@ -58,6 +58,23 @@ node benchmark/compare.mjs baseline.jsonl current.jsonl
 
 See `docs/FRICTION_REVIEW.md` and `benchmark/PROTOCOL.md`.
 
+## Optional Langfuse Export
+
+Stop hook `scripts/hooks/export-langfuse-trace.mjs` can export newly synced
+Harness traces to Langfuse for external production observability.
+
+Enable with environment variables:
+
+```bash
+export HARNESS_LANGFUSE_ENABLED=1
+export HARNESS_LANGFUSE_HOST="https://cloud.langfuse.com"
+export HARNESS_LANGFUSE_PUBLIC_KEY="pk-lf-..."
+export HARNESS_LANGFUSE_SECRET_KEY="sk-lf-..."
+```
+
+The exporter is best-effort and non-blocking. State file:
+`kg/runtime/langfuse-export-state.json`.
+
 Direct database inspection may still use SQLite tools, but normal Harness use
 should go through the Rust CLI.
 
@@ -91,8 +108,8 @@ scripts/bin/harness-cli query stats
 scripts/bin/harness-cli query sql ...
 ```
 
-`query cost` now reports token coverage by agent/lane (`with_tokens`, `missing_w_note`, `missing_wo_note`) plus USD estimate via `HARNESS_USD_PER_MTOK`.
-`query stats` includes repo-level token observability (`with_tokens`, coverage, missing with/without note).
+`query cost` now reports token coverage by agent/lane (`with_tokens`, `missing_w_note`, `missing_wo_note`), Langfuse export coverage (`exported_lf`, `pending_export`), plus USD estimate via `HARNESS_USD_PER_MTOK`.
+`query stats` includes repo-level token observability and Langfuse export coverage.
 
 `scripts/bin/harness-cli import brownfield` seeds or refreshes the durable database
 from existing Harness v0 markdown in `docs/TEST_MATRIX.md`,

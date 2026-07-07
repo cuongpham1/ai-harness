@@ -48,6 +48,9 @@
         "command": "node scripts/hooks/cursor/stop-sync-trace.mjs"
       },
       {
+        "command": "node scripts/hooks/cursor/stop-export-langfuse.mjs"
+      },
+      {
         "command": "node scripts/hooks/cursor/stop-score-trace.mjs"
       },
       {

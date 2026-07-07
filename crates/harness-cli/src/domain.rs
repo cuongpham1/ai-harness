@@ -384,6 +384,8 @@ pub struct CostRecord {
     pub runs_with_tokens: i64,
     pub runs_missing_tokens: i64,
     pub missing_tokens_with_note: i64,
+    pub runs_exported_langfuse: i64,
+    pub runs_not_exported_langfuse: i64,
     pub total_tokens: i64,
 }
 
@@ -397,6 +399,8 @@ pub struct HarnessStats {
     pub traces_with_tokens: i64,
     pub traces_missing_tokens: i64,
     pub traces_missing_tokens_with_note: i64,
+    pub traces_exported_langfuse: i64,
+    pub traces_not_exported_langfuse: i64,
     pub total_tokens: i64,
 }
 

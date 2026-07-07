@@ -172,6 +172,15 @@ impl SqliteHarnessRepository {
         Ok(files)
     }
 
+    fn trace_has_column(&self, connection: &Connection, column: &str) -> Result<bool> {
+        let count = connection.query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('trace') WHERE name = ?1;",
+            params![column],
+            |row| row.get::<_, i64>(0),
+        )?;
+        Ok(count > 0)
+    }
+
     fn import_matrix(&self, connection: &Connection) -> Result<usize> {
         let matrix_path = self.repo_root.join("docs/TEST_MATRIX.md");
         if !matrix_path.exists() {
@@ -970,7 +979,20 @@ impl HarnessRepository for SqliteHarnessRepository {
 
     fn query_cost(&self) -> Result<Vec<CostRecord>> {
         let connection = self.open_existing()?;
-        let mut statement = connection.prepare(
+        let has_langfuse_exported_at = self.trace_has_column(&connection, "langfuse_exported_at")?;
+        let langfuse_fragment = if has_langfuse_exported_at {
+            "
+                SUM(CASE WHEN trace.langfuse_exported_at IS NOT NULL THEN 1 ELSE 0 END),
+                SUM(CASE WHEN trace.langfuse_exported_at IS NULL THEN 1 ELSE 0 END),
+            "
+        } else {
+            "
+                0,
+                COUNT(*),
+            "
+        };
+
+        let sql = format!(
             "SELECT
                 trace.agent,
                 intake.risk_lane,
@@ -990,12 +1012,15 @@ impl HarnessRepository for SqliteHarnessRepository {
                         ELSE 0
                     END
                 ),
+                {langfuse_fragment}
                 COALESCE(SUM(trace.token_estimate), 0)
              FROM trace
              LEFT JOIN intake ON intake.id = trace.intake_id
              GROUP BY trace.agent, intake.risk_lane
-             ORDER BY COALESCE(SUM(trace.token_estimate), 0) DESC;",
-        )?;
+             ORDER BY COALESCE(SUM(trace.token_estimate), 0) DESC;"
+        );
+
+        let mut statement = connection.prepare(&sql)?;
 
         let rows = statement.query_map([], |row| {
             Ok(CostRecord {
@@ -1005,7 +1030,9 @@ impl HarnessRepository for SqliteHarnessRepository {
                 runs_with_tokens: row.get(3)?,
                 runs_missing_tokens: row.get(4)?,
                 missing_tokens_with_note: row.get(5)?,
-                total_tokens: row.get(6)?,
+                runs_exported_langfuse: row.get(6)?,
+                runs_not_exported_langfuse: row.get(7)?,
+                total_tokens: row.get(8)?,
             })
         })?;
 
@@ -1014,9 +1041,21 @@ impl HarnessRepository for SqliteHarnessRepository {
 
     fn query_stats(&self) -> Result<HarnessStats> {
         let connection = self.open_existing()?;
-        connection
-            .query_row(
-                "SELECT
+        let has_langfuse_exported_at = self.trace_has_column(&connection, "langfuse_exported_at")?;
+        let langfuse_stats_fragment = if has_langfuse_exported_at {
+            "
+                    (SELECT COUNT(*) FROM trace WHERE langfuse_exported_at IS NOT NULL) AS traces_exported_langfuse,
+                    (SELECT COUNT(*) FROM trace WHERE langfuse_exported_at IS NULL) AS traces_not_exported_langfuse,
+            "
+        } else {
+            "
+                    0 AS traces_exported_langfuse,
+                    (SELECT COUNT(*) FROM trace) AS traces_not_exported_langfuse,
+            "
+        };
+
+        let sql = format!(
+            "SELECT
                     (SELECT COUNT(*) FROM intake) AS intakes,
                     (SELECT COUNT(*) FROM story) AS stories,
                     (SELECT COUNT(*) FROM decision) AS decisions,
@@ -1035,8 +1074,12 @@ impl HarnessRepository for SqliteHarnessRepository {
                             OR lower(COALESCE(notes, '')) LIKE '%unknown%'
                           )
                     ) AS traces_missing_tokens_with_note,
-                    (SELECT COALESCE(SUM(token_estimate), 0) FROM trace) AS total_tokens;",
-                [],
+                    {langfuse_stats_fragment}
+                    (SELECT COALESCE(SUM(token_estimate), 0) FROM trace) AS total_tokens;"
+        );
+
+        connection
+            .query_row(&sql, [],
                 |row| {
                     Ok(HarnessStats {
                         intakes: row.get(0)?,
@@ -1047,7 +1090,9 @@ impl HarnessRepository for SqliteHarnessRepository {
                         traces_with_tokens: row.get(5)?,
                         traces_missing_tokens: row.get(6)?,
                         traces_missing_tokens_with_note: row.get(7)?,
-                        total_tokens: row.get(8)?,
+                        traces_exported_langfuse: row.get(8)?,
+                        traces_not_exported_langfuse: row.get(9)?,
+                        total_tokens: row.get(10)?,
                     })
                 },
             )
@@ -1387,7 +1432,7 @@ mod tests {
         assert_eq!(repository.query_stats().unwrap().intakes, 0);
         let connection = repository.open_existing().unwrap();
         let schema_version = SqliteHarnessRepository::schema_version(&connection).unwrap();
-        assert_eq!(schema_version, 6);
+        assert_eq!(schema_version, 7);
         let story_columns = story_columns(&connection);
         assert!(story_columns.contains(&"verify_command".to_owned()));
         assert!(story_columns.contains(&"last_verified_at".to_owned()));
@@ -1448,11 +1493,11 @@ mod tests {
         let result = repository.migrate().unwrap();
 
         assert_eq!(result.current_version, 1);
-        assert_eq!(result.applied, vec![2, 3, 4, 5, 6]);
+        assert_eq!(result.applied, vec![2, 3, 4, 5, 6, 7]);
         let connection = repository.open_existing().unwrap();
         assert_eq!(
             SqliteHarnessRepository::schema_version(&connection).unwrap(),
-            6
+            7
         );
         let story_columns = story_columns(&connection);
         assert!(story_columns.contains(&"verify_command".to_owned()));

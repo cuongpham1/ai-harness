@@ -4,6 +4,8 @@
 
 - chore(cli): bump installer CLI pin to `harness-cli-v0.1.11` and sync docs to current command surface
 - feat(p0-token-analytics): add token coverage observability in `query cost` and `query stats`, plus stronger trace token parsing/signal in Stop hook
+- feat(observability): add optional Langfuse export hook, trace schema migration 007, upgrade propagation, and integration docs
+- feat(observability): include Langfuse export coverage in `query cost` and `query stats` outputs (agent/lane + repo-level)
 - Harness CLI release: `harness-cli-v0.1.11`
 - Changed files:
   - `scripts/harness-cli-release-tag`
@@ -14,9 +16,16 @@
   - `docs/HARNESS_VERIFICATION.md`
   - `docs/README.md`
   - `docs/TOKEN_EFFICIENCY.md`
+  - `docs/LANGFUSE.md`
+  - `docs/TRACE_SPEC.md`
   - `crates/harness-cli/src/domain.rs`
   - `crates/harness-cli/src/infrastructure.rs`
   - `crates/harness-cli/src/interface.rs`
+  - `.claude/settings.json`
+  - `scripts/hooks/export-langfuse-trace.mjs`
+  - `scripts/schema/007-langfuse-export.sql`
+  - `scripts/verify-h4.sh`
+  - `scripts/upgrade.sh`
   - `scripts/hooks/sync-harness-trace.mjs`
 
 ## 2026-06-15 - PR #20

@@ -819,8 +819,10 @@ fn print_cost(records: &[CostRecord]) {
     let mut total_runs_with_tokens = 0i64;
     let mut total_runs_missing_tokens = 0i64;
     let mut total_missing_with_note = 0i64;
+    let mut total_runs_exported_langfuse = 0i64;
+    let mut total_runs_not_exported_langfuse = 0i64;
     let mut total_tokens = 0i64;
-    let mut lane_rollup: BTreeMap<String, (i64, i64, i64, i64, i64)> = BTreeMap::new();
+    let mut lane_rollup: BTreeMap<String, (i64, i64, i64, i64, i64, i64, i64)> = BTreeMap::new();
 
     let mut rows: Vec<Vec<String>> = records
         .iter()
@@ -829,15 +831,19 @@ fn print_cost(records: &[CostRecord]) {
             total_runs_with_tokens += record.runs_with_tokens;
             total_runs_missing_tokens += record.runs_missing_tokens;
             total_missing_with_note += record.missing_tokens_with_note;
+            total_runs_exported_langfuse += record.runs_exported_langfuse;
+            total_runs_not_exported_langfuse += record.runs_not_exported_langfuse;
             total_tokens += record.total_tokens;
 
             let lane = record.risk_lane.clone().unwrap_or_else(|| "-".to_owned());
-            let lane_stats = lane_rollup.entry(lane.clone()).or_insert((0, 0, 0, 0, 0));
+            let lane_stats = lane_rollup.entry(lane.clone()).or_insert((0, 0, 0, 0, 0, 0, 0));
             lane_stats.0 += record.runs;
             lane_stats.1 += record.runs_with_tokens;
             lane_stats.2 += record.runs_missing_tokens;
             lane_stats.3 += record.missing_tokens_with_note;
             lane_stats.4 += record.total_tokens;
+            lane_stats.5 += record.runs_exported_langfuse;
+            lane_stats.6 += record.runs_not_exported_langfuse;
 
             let missing_without_note = missing_without_note(
                 record.runs_missing_tokens,
@@ -853,6 +859,9 @@ fn print_cost(records: &[CostRecord]) {
                 record.runs_missing_tokens.to_string(),
                 record.missing_tokens_with_note.to_string(),
                 missing_without_note.to_string(),
+                record.runs_exported_langfuse.to_string(),
+                percent(record.runs_exported_langfuse, record.runs),
+                record.runs_not_exported_langfuse.to_string(),
                 record.total_tokens.to_string(),
                 format!("{:.4}", tokens_to_usd(record.total_tokens, rate)),
             ]
@@ -868,6 +877,9 @@ fn print_cost(records: &[CostRecord]) {
         total_runs_missing_tokens.to_string(),
         total_missing_with_note.to_string(),
         missing_without_note(total_runs_missing_tokens, total_missing_with_note).to_string(),
+        total_runs_exported_langfuse.to_string(),
+        percent(total_runs_exported_langfuse, total_runs),
+        total_runs_not_exported_langfuse.to_string(),
         total_tokens.to_string(),
         format!("{:.4}", tokens_to_usd(total_tokens, rate)),
     ]);
@@ -883,6 +895,9 @@ fn print_cost(records: &[CostRecord]) {
             "missing",
             "missing_w_note",
             "missing_wo_note",
+            "exported_lf",
+            "export_cov",
+            "pending_export",
             "tokens",
             usd_header.as_str(),
         ],
@@ -894,7 +909,19 @@ fn print_cost(records: &[CostRecord]) {
         println!("Lane token coverage:");
         let lane_rows = lane_rollup
             .into_iter()
-            .map(|(lane, (runs, with_tokens, missing_tokens, missing_with_note, tokens))| {
+            .map(
+                |(
+                    lane,
+                    (
+                        runs,
+                        with_tokens,
+                        missing_tokens,
+                        missing_with_note,
+                        tokens,
+                        exported_langfuse,
+                        not_exported_langfuse,
+                    ),
+                )| {
                 vec![
                     lane,
                     runs.to_string(),
@@ -903,10 +930,14 @@ fn print_cost(records: &[CostRecord]) {
                     missing_tokens.to_string(),
                     missing_with_note.to_string(),
                     missing_without_note(missing_tokens, missing_with_note).to_string(),
+                    exported_langfuse.to_string(),
+                    percent(exported_langfuse, runs),
+                    not_exported_langfuse.to_string(),
                     tokens.to_string(),
                     format!("{:.4}", tokens_to_usd(tokens, rate)),
                 ]
-            })
+            },
+            )
             .collect::<Vec<_>>();
         print_table(
             &[
@@ -917,6 +948,9 @@ fn print_cost(records: &[CostRecord]) {
                 "missing",
                 "missing_w_note",
                 "missing_wo_note",
+                "exported_lf",
+                "export_cov",
+                "pending_export",
                 "tokens",
                 usd_header.as_str(),
             ],
@@ -948,6 +982,9 @@ fn print_stats(stats: &HarnessStats) {
             "missing",
             "missing_w_note",
             "missing_wo_note",
+            "exported_lf",
+            "export_cov",
+            "pending_export",
             "total_tokens",
             usd_header.as_str(),
         ],
@@ -961,6 +998,9 @@ fn print_stats(stats: &HarnessStats) {
                 stats.traces_missing_tokens_with_note,
             )
             .to_string(),
+            stats.traces_exported_langfuse.to_string(),
+            percent(stats.traces_exported_langfuse, stats.traces),
+            stats.traces_not_exported_langfuse.to_string(),
             stats.total_tokens.to_string(),
             format!("{:.4}", tokens_to_usd(stats.total_tokens, rate)),
         ]],

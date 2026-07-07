@@ -187,6 +187,14 @@
                 "hooks": [
                     {
                         "type": "command",
+                        "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/export-langfuse-trace.mjs"
+                    }
+                ]
+            },
+            {
+                "hooks": [
+                    {
+                        "type": "command",
                         "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/score-trace-after-sync.mjs"
                     }
                 ]

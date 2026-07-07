@@ -65,7 +65,9 @@ copy_if_new "scripts/README.md"
 copy_if_new "scripts/harness-cli-release-tag"
 copy_if_new "scripts/install-harness.sh"
 copy_if_new "scripts/hooks/sync-harness-trace.mjs"
+copy_if_new "scripts/hooks/export-langfuse-trace.mjs"
 copy_if_new "scripts/hooks/score-trace-after-sync.mjs"
+copy_if_new "scripts/hooks/cursor/stop-export-langfuse.mjs"
 copy_if_new "scripts/hooks/cursor/stop-score-trace.mjs"
 copy_if_new "scripts/friction-by-component.mjs"
 copy_if_new "scripts/rtk-shell.sh"
@@ -89,6 +91,7 @@ copy_if_new "scripts/hooks/lib-harness-task.mjs"
 copy_if_new "scripts/apply-proposal.sh"
 copy_if_new "docs/SELF_IMPROVE.md"
 copy_if_new "docs/HARNESS_VERIFICATION.md"
+copy_if_new "docs/LANGFUSE.md"
 copy_if_new "docs/templates/harness-proposal.md"
 copy_if_new "docs/FRICTION_REVIEW.md"
 copy_if_new "scripts/merge-agents-md.sh"
@@ -126,6 +129,7 @@ done
 
 # Schema file — required for harness-cli init
 copy_if_new "scripts/schema/001-init.sql"
+copy_if_new "scripts/schema/007-langfuse-export.sql"
 
 # Harness CLI — install if missing
 if [[ ! -x "$TARGET/scripts/bin/harness-cli" && -x "$HARNESS_DIR/scripts/bin/harness-cli" ]]; then
@@ -207,6 +211,18 @@ if (!hasSyncTrace) {
     hooks: [{ type: 'command', command: 'node scripts/hooks/sync-harness-trace.mjs' }]
   });
   process.stderr.write('  + Stop: sync-harness-trace.mjs\n');
+}
+
+const hasLangfuseExport = settings.hooks.Stop.some(
+  h => JSON.stringify(h).includes('export-langfuse-trace.mjs')
+);
+if (!hasLangfuseExport) {
+  settings.hooks.Stop.push({
+    hooks: [{ type: 'command', command: 'node scripts/hooks/export-langfuse-trace.mjs' }]
+  });
+  process.stderr.write('  + Stop: export-langfuse-trace.mjs\n');
+} else {
+  process.stderr.write('  ~ Stop: export-langfuse-trace already present\n');
 }
 
 const hasScoreTrace = settings.hooks.Stop.some(

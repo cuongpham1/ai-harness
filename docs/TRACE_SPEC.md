@@ -7,6 +7,9 @@ review, benchmark scoring, failure attribution, and future harness evolution.
 The current schema lives in `scripts/schema/001-init.sql` under the `trace`
 table. The schema is not changed by Phase 2.
 
+Optional external export metadata is added by migration
+`scripts/schema/007-langfuse-export.sql`.
+
 ## Field Reference
 
 | Field | Type | Required | Format | Example |
@@ -27,6 +30,8 @@ table. The schema is not changed by Phase 2.
 | `token_estimate` | INTEGER | Detailed when available | Positive integer estimate. Leave null if unknown. | `24000` |
 | `harness_friction` | TEXT | Standard+ when friction exists; Detailed always | Free text naming what was hard, missing, ambiguous, or repeated. Use `none` only when the agent actively checked and found no friction. | `New Phase 2 docs are not in installer copy list; recorded as out-of-scope follow-up.` |
 | `notes` | TEXT | Optional | Free text for review context that does not fit other fields. | `Trace covers US-003, US-004, US-005, and US-006.` |
+| `langfuse_trace_id` | TEXT | Optional | External trace id when Stop hook export is enabled. | `harness-trace-42` |
+| `langfuse_exported_at` | TEXT | Optional | SQLite datetime when the row was exported to Langfuse. | `2026-07-07 05:12:09` |
 
 ## Quality Tiers
 
@@ -196,3 +201,9 @@ Before the final response, check:
   current CLI is used.
 - `harness_friction` either names a concrete issue or is intentionally `none`.
 - Any friction that should become future work is recorded in the backlog.
+
+## Optional External Export
+
+When Langfuse integration is enabled (`HARNESS_LANGFUSE_ENABLED=1`), Stop hook
+`scripts/hooks/export-langfuse-trace.mjs` exports new traces after sync and
+writes correlation metadata (`langfuse_trace_id`, `langfuse_exported_at`).

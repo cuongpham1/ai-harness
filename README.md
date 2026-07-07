@@ -246,6 +246,7 @@ node scripts/check-agent-parity.mjs
 | [docs/HARNESS_VERIFICATION.md](docs/HARNESS_VERIFICATION.md) | Verify, `proof`, hooks |
 | [docs/CURSOR.md](docs/CURSOR.md) | Cursor parity |
 | [docs/TOKEN_EFFICIENCY.md](docs/TOKEN_EFFICIENCY.md) | RTK, MCP |
+| [docs/LANGFUSE.md](docs/LANGFUSE.md) | Export trace ra Langfuse (prod observability/cost) |
 | [scripts/README.md](scripts/README.md) | CLI + scripts chi tiết |
 | [docs/decisions/0006-hybrid-claude-code-harness.md](docs/decisions/0006-hybrid-claude-code-harness.md) | Vì sao hybrid |
 

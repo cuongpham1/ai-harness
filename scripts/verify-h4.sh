@@ -26,6 +26,7 @@ for f in \
   scripts/hooks/run-harness-verify.mjs \
   scripts/hooks/lib-harness-task.mjs \
   scripts/hooks/backlog-surface.mjs \
+  scripts/hooks/export-langfuse-trace.mjs \
   scripts/batch-verify.sh \
   scripts/verify-story.sh; do
   [[ -f "$f" ]] || { echo "  FAIL: missing $f"; exit 1; }
