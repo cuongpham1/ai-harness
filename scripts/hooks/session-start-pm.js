@@ -10,6 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const { initSession } = require('../utils/session-touched-tasks');
 
 const cwd = (() => { try { return fs.realpathSync(process.cwd()); } catch { return process.cwd(); } })();
 const PM_DIR = path.join(cwd, '.project-manager');
@@ -73,6 +74,8 @@ function getTasksByStatus() {
 try {
   const pmExists = fs.existsSync(PM_DIR);
   if (!pmExists) { process.exit(0); }
+
+  try { initSession(); } catch { /* non-fatal */ }
 
   const { inProgress, todo, blocked, discipline } = getTasksByStatus();
   const parts = [];

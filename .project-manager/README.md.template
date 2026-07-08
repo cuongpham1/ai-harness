@@ -4,8 +4,13 @@
 
 | Doc | Purpose |
 |-----|---------|
-| [docs/HARNESS.md](../docs/HARNESS.md) | Agent ↔ human workflow |
-| [docs/FEATURE_INTAKE.md](../docs/FEATURE_INTAKE.md) | tiny / normal / high-risk |
+| [docs/HARNESS.md](../docs/HARNESS.md) | Task loop, validation, trace sync |
+| [docs/FEATURE_INTAKE.md](../docs/FEATURE_INTAKE.md) | tiny / normal / high-risk lanes |
+| [docs/CONTEXT_RULES.md](../docs/CONTEXT_RULES.md) | Phase-by-lane context rules |
+| [docs/HARNESS_VERIFICATION.md](../docs/HARNESS_VERIFICATION.md) | Verify, proof gate, hooks |
+| [docs/CURSOR.md](../docs/CURSOR.md) | Cursor hooks and subagents |
+| [docs/CODEX.md](../docs/CODEX.md) | Copilot/Codex manual workflow |
+| [docs/TOKEN_EFFICIENCY.md](../docs/TOKEN_EFFICIENCY.md) | RTK, context handoff |
 | [docs/TEST_MATRIX.md](../docs/TEST_MATRIX.md) | Behavior → proof |
 | [docs/templates/task.md](../docs/templates/task.md) | Task template |
 | [AGENTS.md](../AGENTS.md) | Agent entrypoint |

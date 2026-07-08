@@ -38,3 +38,12 @@ Prefer clear separation: UI/widgets → state (BLoC/Riverpod/Provider) → domai
 ```bash
 flutter analyze && flutter test
 ```
+
+Prefer the RTK wrapper when installed (smaller test/analyze output):
+
+```bash
+bash scripts/rtk-flutter.sh test
+bash scripts/rtk-flutter.sh analyze
+```
+
+See [docs/TOKEN_EFFICIENCY.md](../../docs/TOKEN_EFFICIENCY.md) (installed as `docs/TOKEN_EFFICIENCY.md` in target projects).

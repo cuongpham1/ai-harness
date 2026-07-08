@@ -1,9 +1,11 @@
-# Codex (OpenAI) with AI Harness
+# Codex (OpenAI) and GitHub Copilot with AI Harness
 
-This guide explains how to use the AI Harness from **Codex**, or any coding agent that
-has no hook system. Codex reads `AGENTS.md` natively and can run shell commands, but it
-will **not** fire the lifecycle hooks that Claude Code and Cursor rely on. Everything
-those hooks do must be done manually.
+This guide explains how to use the AI Harness from **Codex** (OpenAI) or **GitHub Copilot**
+(in VS Code, github.com, or Copilot CLI with a Codex-class model). These agents have no
+hook system. Codex reads `AGENTS.md` natively; Copilot loads
+[`.github/copilot-instructions.md`](../.github/copilot-instructions.md) for repository-wide
+instructions. Both can run shell commands, but neither fires the lifecycle hooks that
+Claude Code and Cursor rely on. Everything those hooks do must be done manually.
 
 ---
 
@@ -11,7 +13,7 @@ those hooks do must be done manually.
 
 | Capability | How |
 |------------|-----|
-| Agent instructions | Codex reads `AGENTS.md` automatically at the repo root |
+| Agent instructions | Codex: `AGENTS.md` at repo root. Copilot: `.github/copilot-instructions.md` (points to `AGENTS.md` + this guide) |
 | Durable CLI | `scripts/bin/harness-cli` runs as a normal shell command |
 | Docs | `docs/HARNESS.md`, `docs/FEATURE_INTAKE.md`, `docs/CONTEXT_RULES.md`, etc. are plain markdown |
 | Task files | `.project-manager/tasks/*.md` are the source of truth and editable directly |

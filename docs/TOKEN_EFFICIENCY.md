@@ -9,7 +9,7 @@ Ways to reduce tokens and latency when using AI Harness. Goal: **less noise in c
 | 1 | Classify **tiny** lane → skip full subagent pipeline | Whole extra agent runs |
 | 2 | Follow [CONTEXT_RULES.md](CONTEXT_RULES.md) phase/lane — read less | Input tokens |
 | 3 | Use **RTK** for shell + stack test wrappers | Tool output tokens |
-| 4 | Run `/compact` at phase boundaries (hook reminds at ~50 calls) | History tokens |
+| 4 | Run manual compaction at phase boundaries (hook nudges at high usage) | History tokens |
 | 5 | MCP on-demand ([MCP_SETUP.md](MCP_SETUP.md)) — context7, gitnexus | Fewer file reads |
 
 ## RTK (Reduced Tool output Kit)
@@ -67,12 +67,24 @@ Avoid for: high-risk specs, legal/compliance text, After-Work handoff (keep clea
 
 `sessionStart` injects **in_progress + blocked** tasks first. Todo list is omitted when something is in progress (max 3 otherwise). Reduces repeated context each session.
 
-## Compact threshold
+## Compact threshold (Claude Code only)
 
-Claude hook `suggest-compact.js` warns after `COMPACT_THRESHOLD` tool calls (default **50**):
+Claude hook `suggest-compact.js` warns or blocks at tier thresholds. Cursor uses `context-nudge.mjs` (warn-only — start a new Agent chat; see [CURSOR.md](CURSOR.md)).
+
+**Percent-based (primary)** — from stdin `context_window.percent_used`:
 
 ```bash
-export COMPACT_THRESHOLD=40   # earlier nudge in long sessions
+export COMPACT_PCT_TIER1=60   # yellow warn (default)
+export COMPACT_PCT_TIER2=80   # orange warn
+export COMPACT_PCT_TIER3=92   # red block (Claude Code only)
+```
+
+**Tool-call fallback** (when percent unavailable):
+
+```bash
+export COMPACT_TIER1=30
+export COMPACT_TIER2=55
+export COMPACT_TIER3=200
 ```
 
 Compact **after** milestones (explore → implement), not mid-edit.
@@ -89,6 +101,7 @@ Compact **after** milestones (explore → implement), not mid-edit.
 
 - Disable **Third-party skills** if using `.cursor/hooks.json` only (avoids duplicate Claude hooks).
 - Keep `.cursor/rules/*.mdc` focused — long rules cost tokens every turn.
+- **No `/compact` on Cursor.** When context is large, finish the step, write After-Work, then start a **new Agent chat** (`context-nudge.mjs` warns in Hooks output; see [CURSOR.md](CURSOR.md#context-handoff-cursor-has-no-compact)).
 
 ## Measuring
 

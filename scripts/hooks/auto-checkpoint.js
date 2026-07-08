@@ -88,20 +88,56 @@ function getTranscriptData(transcriptPath) {
   return { lastMsg, gitCommits };
 }
 
+function getActiveTaskFromTasksDir() {
+  const tasksDir = path.join(cwd, '.project-manager', 'tasks');
+  if (!fs.existsSync(tasksDir)) return null;
+
+  const touchedPath = path.join(cwd, 'kg', 'runtime', 'session-touched-tasks.json');
+  let touched = [];
+  try {
+    const state = JSON.parse(fs.readFileSync(touchedPath, 'utf8'));
+    if (Array.isArray(state?.touched)) touched = state.touched;
+  } catch { /* ignore */ }
+
+  const candidates = [];
+  for (const file of fs.readdirSync(tasksDir).filter(f => f.endsWith('.md'))) {
+    const content = readFileSafe(path.join(tasksDir, file));
+    if (!content) continue;
+    const status = (content.match(/\*\*Status:\*\*\s*(\S+)/)?.[1] || '').toLowerCase();
+    if (status !== 'in_progress') continue;
+    const id = file.replace('.md', '');
+    const titleMatch = content.match(/^# Task:\s*(.+)$/m);
+    const stat = fs.statSync(path.join(tasksDir, file));
+    candidates.push({
+      id,
+      name: titleMatch?.[1] || id,
+      mtime: stat.mtimeMs,
+      touched: touched.includes(id),
+    });
+  }
+
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => {
+    if (a.touched !== b.touched) return a.touched ? -1 : 1;
+    return b.mtime - a.mtime;
+  });
+  return { name: candidates[0].name, progress: '?%', currently: null };
+}
+
 function getActiveTask() {
   const content = readWithFallback('in-progress.md');
-  if (!content) return null;
-
-  const match = content.match(/^## (.+)/m);
-  if (!match) return null;
-
-  const name = match[1].trim();
-  const progressMatch = content.match(/\*\*Progress:\*\*\s*(\S+)/);
-  const progress = progressMatch ? progressMatch[1] : '?%';
-  const currentlyMatch = content.match(/\*\*Currently:\*\*\s*(.+)/);
-  const currently = currentlyMatch ? currentlyMatch[1].trim() : null;
-
-  return { name, progress, currently };
+  if (content) {
+    const match = content.match(/^## (.+)/m);
+    if (match) {
+      const name = match[1].trim();
+      const progressMatch = content.match(/\*\*Progress:\*\*\s*(\S+)/);
+      const progress = progressMatch ? progressMatch[1] : '?%';
+      const currentlyMatch = content.match(/\*\*Currently:\*\*\s*(.+)/);
+      const currently = currentlyMatch ? currentlyMatch[1].trim() : null;
+      return { name, progress, currently };
+    }
+  }
+  return getActiveTaskFromTasksDir();
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────

@@ -73,6 +73,11 @@ copy_if_new "scripts/friction-by-component.mjs"
 copy_if_new "scripts/rtk-shell.sh"
 copy_if_new "scripts/rtk-node.sh"
 copy_if_new "scripts/rtk-python.sh"
+copy_if_new "scripts/sync-harness-layer.sh"
+copy_if_new "scripts/rebuild-harness-cli.sh"
+copy_if_new "scripts/utils/session-touched-tasks.js"
+copy_if_new "scripts/hooks/cursor/context-nudge.mjs"
+copy_if_new "docs/CURSOR.md"
 copy_if_new "docs/TOKEN_EFFICIENCY.md"
 copy_if_new "docs/MCP_SETUP.md"
 copy_if_new "scripts/verify-h3.sh"
@@ -318,6 +323,11 @@ echo "  + kg/traces/ ensured"
 # Cursor layer refresh
 if [[ -f "$HARNESS_DIR/scripts/install-cursor-layer.sh" ]]; then
   bash "$HARNESS_DIR/scripts/install-cursor-layer.sh" "$TARGET"
+fi
+
+# Full hook/script refresh (solo-dev safe — does not touch .gitignore)
+if [[ -f "$HARNESS_DIR/scripts/sync-harness-layer.sh" ]]; then
+  bash "$HARNESS_DIR/scripts/sync-harness-layer.sh" "$TARGET"
 fi
 
 echo ""

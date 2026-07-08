@@ -21,9 +21,19 @@ bash scripts/verify-story.sh          # H4 lane-aware proof
 bash scripts/verify-h4.sh             # H3 + parity + H4 dry-run
 ```
 
+**Upgrade installed target (solo-dev, keeps `.gitignore`):**
+```bash
+bash scripts/upgrade.sh /path/to/project
+bash scripts/sync-harness-layer.sh /path/to/project   # refresh hooks + agents; no gitignore change
+bash scripts/rebuild-harness-cli.sh                    # rebuild CLI (query cost, latest schema)
+node scripts/hooks/update-pm-readme.js --refresh-all   # sync README from task statuses
+```
+
 **Done checklist:** tiny → After-Work only; normal → full pipeline + `verify-story` on completed; high-risk → + ADR. See [docs/HARNESS_VERIFICATION.md](docs/HARNESS_VERIFICATION.md).
 
 ## Codex and hook-less agents
+
+GitHub Copilot reads [`.github/copilot-instructions.md`](.github/copilot-instructions.md); full guide: [docs/CODEX.md](docs/CODEX.md).
 
 If you are **Codex** (OpenAI) or any agent without a hook system, run these manually — hooks won't fire automatically.
 

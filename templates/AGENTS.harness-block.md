@@ -47,4 +47,45 @@ Skip full pipeline only for **tiny** lane. Details: `.claude/agents/pm.md`.
 - **RTK:** `rtk git …`, `rtk grep …`, or `bash scripts/rtk-shell.sh …` when RTK installed; stack: `scripts/rtk-node.sh`, `scripts/rtk-python.sh`, `scripts/rtk-flutter.sh`
 - **MCP:** optional context7 + gitnexus — see [docs/MCP_SETUP.md](docs/MCP_SETUP.md) (configure separately for Cursor and Claude)
 - **Lanes:** tiny = minimal pipeline; use [docs/TOKEN_EFFICIENCY.md](docs/TOKEN_EFFICIENCY.md)
+
+## Codex and hook-less agents
+
+GitHub Copilot reads [`.github/copilot-instructions.md`](.github/copilot-instructions.md); full guide: [docs/CODEX.md](docs/CODEX.md).
+
+If you are **Codex** (OpenAI) or any agent without a hook system, run these manually — hooks won't fire automatically.
+
+**Before work:**
+```bash
+scripts/bin/harness-cli query matrix
+```
+
+**After work — two steps (both required):**
+
+Step 1 — append After-Work note to the task file in `.project-manager/tasks/`:
+```markdown
+### After-Work — YYYY-MM-DD
+**Agent:** codex
+**Outcome:** completed | partial | blocked | failed
+**Done:** one sentence summary (≥10 chars)
+**Actions:** comma-separated list of actions taken
+**Files read:** comma-separated list of files read
+**Files changed:** comma-separated list
+**Errors:** none
+**Friction:** none
+```
+
+Step 2 — record trace to durable DB:
+```bash
+scripts/bin/harness-cli trace \
+  --summary "one sentence summary" \
+  --agent codex \
+  --outcome completed \
+  --actions "read AGENTS.md, edited src/main.ts, ran tests" \
+  --read "AGENTS.md,docs/HARNESS.md" \
+  --changed "src/main.ts" \
+  --errors "none" \
+  --duration 300
+```
+
+Without Step 2 the trace won't appear in `harness-cli query traces` — Claude Code hooks normally do this on Stop.
 <!-- HARNESS:END -->

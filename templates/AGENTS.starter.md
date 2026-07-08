@@ -2,6 +2,8 @@
 
 Add project-specific instructions for Cursor, Codex, Claude Code, or other coding agents here.
 
+GitHub Copilot loads [`.github/copilot-instructions.md`](.github/copilot-instructions.md) for repo-wide harness rules; see [docs/CODEX.md](docs/CODEX.md) for the manual workflow.
+
 <!-- HARNESS:BEGIN -->
 ## Harness
 
@@ -33,6 +35,8 @@ scripts/bin/harness-cli intake --type change_request --summary "..." --lane norm
 ```
 
 ## Codex and hook-less agents
+
+GitHub Copilot reads [`.github/copilot-instructions.md`](.github/copilot-instructions.md); full guide: [docs/CODEX.md](docs/CODEX.md).
 
 If you are **Codex** (OpenAI) or any agent without a hook system, run these manually — hooks won't fire automatically.
 

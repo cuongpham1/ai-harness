@@ -18,27 +18,31 @@ scripts/bin/harness-cli story verify <id>  # Run one story verify_command
 scripts/bin/harness-cli story verify-all   # Verify every story that has verify_command
 scripts/bin/harness-cli decision ...  # Add a decision or run its verification
 scripts/bin/harness-cli backlog ...   # Add or close a backlog item
-scripts/bin/harness-cli tool ...      # Register/check/remove external tools
-scripts/bin/harness-cli intervention ...  # Record interventions
 scripts/bin/harness-cli trace ...     # Record an agent execution trace
 scripts/bin/harness-cli score-trace   # Score a trace against TRACE_SPEC.md tiers
-scripts/bin/harness-cli score-context # Score trace context reads against CONTEXT_RULES.md
-scripts/bin/harness-cli audit         # Run drift audit and entropy score
-scripts/bin/harness-cli propose       # Generate improvement proposals
-scripts/bin/harness-cli db ...        # Manage database changesets
-scripts/bin/harness-cli query ...     # Query harness data, including backlog --open/--closed
+scripts/bin/harness-cli verify-chain  # Tamper-evident trace hash chain
+scripts/bin/harness-cli query ...     # matrix, backlog, traces, friction, cost, stats, sql
 ```
+
+**Phase 5 (spec/docs — not in current binary):** `tool`, `intervention`, `score-context`, `audit`, `propose`, `query tools`, `query interventions`. See [docs/TOOL_REGISTRY.md](../docs/TOOL_REGISTRY.md) and [PHASE5.md](../PHASE5.md).
 
 Run `scripts/bin/harness-cli help` or `scripts/bin/harness-cli query help` for full usage.
 
 The schema lives in `scripts/schema/` (`001-init.sql`, `002-story-verify.sql`) and is
 version-controlled. The database file (`harness.db`) is `.gitignore`d.
 
-**CLI version:** source installer pin **0.1.11** via `scripts/harness-cli-release-tag` ([repository-harness release](https://github.com/hoangnb24/repository-harness/releases/tag/harness-cli-v0.1.11)). Rebuild locally:
+**CLI version:** source installer pin **0.1.11** via `scripts/harness-cli-release-tag` ([repository-harness release](https://github.com/hoangnb24/repository-harness/releases/tag/harness-cli-v0.1.11)). Rebuild locally (includes `query cost`):
 
 ```bash
-cargo build --release -p harness-cli
-cp target/release/harness-cli scripts/bin/harness-cli
+bash scripts/rebuild-harness-cli.sh
+# or: cargo build --release -p harness-cli && cp target/release/harness-cli scripts/bin/harness-cli
+```
+
+**Solo-dev target refresh** (hooks/agents; does not change `.gitignore`):
+
+```bash
+bash scripts/sync-harness-layer.sh /path/to/target
+node scripts/hooks/update-pm-readme.js --refresh-all
 ```
 
 Requires: the prebuilt Rust CLI at `scripts/bin/harness-cli` (or a local build as above).
@@ -78,9 +82,7 @@ The exporter is best-effort and non-blocking. State file:
 Direct database inspection may still use SQLite tools, but normal Harness use
 should go through the Rust CLI.
 
-### Rust CLI Commands
-
-Current migrated commands:
+### Rust CLI Commands (shipped)
 
 ```bash
 scripts/bin/harness-cli init
@@ -95,6 +97,7 @@ scripts/bin/harness-cli backlog add ...
 scripts/bin/harness-cli backlog close ...
 scripts/bin/harness-cli trace ...
 scripts/bin/harness-cli score-trace
+scripts/bin/harness-cli verify-chain
 scripts/bin/harness-cli query matrix
 scripts/bin/harness-cli query backlog
 scripts/bin/harness-cli query decisions
@@ -102,11 +105,13 @@ scripts/bin/harness-cli query intakes
 scripts/bin/harness-cli query traces
 scripts/bin/harness-cli query friction
 scripts/bin/harness-cli query cost
-scripts/bin/harness-cli query tools
-scripts/bin/harness-cli query interventions
 scripts/bin/harness-cli query stats
 scripts/bin/harness-cli query sql ...
 ```
+
+### Phase 5 (planned — documented, not in binary yet)
+
+`score-context`, `tool register/check/remove`, `intervention add`, `audit`, `propose`, `query tools`, `query interventions`. Track in [PHASE5.md](../PHASE5.md).
 
 `query cost` now reports token coverage by agent/lane (`with_tokens`, `missing_w_note`, `missing_wo_note`), Langfuse export coverage (`exported_lf`, `pending_export`), plus USD estimate via `HARNESS_USD_PER_MTOK`.
 `query stats` includes repo-level token observability and Langfuse export coverage.

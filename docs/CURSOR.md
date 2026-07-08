@@ -38,12 +38,26 @@ Requires **Node.js 18+** (hooks run via `node`).
 | Inject task state | `sessionStart` | `cursor/session-start.mjs` |
 | Block dangerous shell | `beforeShellExecution` | `cursor/before-shell.mjs` |
 | Secret / .env guard | `preToolUse` (Write/Edit) | `cursor/pre-tool-content-guard.mjs` |
+| Warn on high context usage (no block) | `preToolUse` | `cursor/context-nudge.mjs` |
 | Audit file edits | `postToolUse` | `cursor/post-tool-use.mjs` |
 | Subagent telemetry | `subagentStart/Stop` | `cursor/subagent-telemetry.mjs` |
 | Block missing After-Work | `stop` | `cursor/stop-handoff.mjs` |
 | Sync trace → harness.db | `stop` | `cursor/stop-sync-trace.mjs` |
+| Langfuse export (optional) | `stop` | `cursor/stop-export-langfuse.mjs` |
 | Score trace quality | `stop` | `cursor/stop-score-trace.mjs` |
 | Session checkpoint | `stop` | `cursor/stop-checkpoint.mjs` |
+
+## Context handoff (Cursor has no `/compact`)
+
+Claude Code exposes `/compact` to shrink history mid-session. **Cursor does not.**
+
+When `context-nudge.mjs` warns (Hooks output channel):
+
+1. Finish the current micro-step
+2. Append `### After-Work` to touched task files
+3. **Start a new Agent chat** — `sessionStart` reloads `.project-manager` state and `kg/runtime/checkpoint.md`
+
+The hook is **warn-only** — it never blocks tool calls (blocking without a recovery command would deadlock the session).
 
 ## Verify hooks
 
@@ -51,6 +65,7 @@ Requires **Node.js 18+** (hooks run via `node`).
 2. Save `.cursor/hooks.json` — Cursor reloads on save
 3. Restart Cursor if hooks do not appear
 4. Start an Agent session — `sessionStart` should inject `.project-manager` state
+5. High context usage should show warnings in Hooks output channel; tool calls stay allowed
 
 ## Subagent pipeline
 
@@ -75,6 +90,7 @@ Subagent definitions: `.cursor/agents/`.
 | HUD status line | ✅ `scripts/hud/` | ❌ Not available |
 | Hook format | `.claude/settings.json` | `.cursor/hooks.json` |
 | Default agent | `pm` in settings | Use rules + delegate to `pm` subagent |
+| Context shrink | `/compact` + `suggest-compact.js` | New Agent chat + `context-nudge.mjs` (warn-only) |
 | Git commit subagent block | `agent_info.is_subagent` | `beforeShellExecution` asks permission |
 
 ## Troubleshooting
@@ -98,4 +114,5 @@ Reload: save `hooks.json` or restart Cursor. Check **Settings → Hooks** and th
 ```bash
 bash scripts/upgrade.sh /path/to/project
 bash scripts/install-cursor-layer.sh /path/to/project
+bash scripts/sync-harness-layer.sh /path/to/project   # solo-dev: refresh hooks without touching .gitignore
 ```

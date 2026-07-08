@@ -21,6 +21,20 @@ copy_if_new() {
   echo "  ✓ $rel"
 }
 
+copy_always() {
+  local rel="$1"
+  local src="$HARNESS_DIR/$rel"
+  local dst="$TARGET/$rel"
+  if [[ ! -f "$src" ]]; then return; fi
+  if [[ "$src" -ef "$dst" ]]; then
+    echo "  ~ $rel (same file)"
+    return
+  fi
+  mkdir -p "$(dirname "$dst")"
+  cp "$src" "$dst"
+  echo "  ✓ $rel"
+}
+
 copy_dir_if_new() {
   local rel="$1"
   local src="$HARNESS_DIR/$rel"
@@ -36,8 +50,9 @@ copy_dir_if_new() {
   done
 }
 
-copy_if_new ".cursor/hooks.json"
+copy_always ".cursor/hooks.json"
 copy_dir_if_new ".cursor/rules"
+copy_dir_if_new ".cursor/skills"
 
 # Cursor hooks reuse scripts/hooks/cursor (installed with main harness)
 mkdir -p "$TARGET/scripts/hooks/cursor"

@@ -1,5 +1,7 @@
 # Tool Registry
 
+> **Note:** Inbound registry CLI commands (`tool register`, `query tools`, `intervention add`, `query interventions`, `score-context`) are **Phase 5 spec** — documented here and in [PHASE5.md](PHASE5.md), not yet in the shipped `harness-cli` binary. Use `harness-cli query cost` and `query stats` for token observability today.
+
 The harness deals with two distinct kinds of "tool". Keep them separate.
 
 | | Capability manifest (outbound) | Inbound tool registry |

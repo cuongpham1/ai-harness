@@ -9,6 +9,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { getTouchedTasks } = require('../utils/session-touched-tasks');
 
 // Prevent infinite loop (Claude Code sets this env var in Stop hooks)
 if (process.env.CLAUDE_STOP_HOOK_ACTIVE === '1') {
@@ -27,17 +28,22 @@ try {
 
   const files = fs.readdirSync(tasksDir).filter(f => f.endsWith('.md')).sort();
   const missing = [];
+  const touched = getTouchedTasks();
 
   for (const file of files) {
     const content = readFileSafe(path.join(tasksDir, file));
     if (!content) continue;
 
+    const taskId = file.replace('.md', '');
     const statusMatch = content.match(/\*\*Status:\*\*\s*(\S+)/);
     if (statusMatch?.[1]?.toLowerCase() !== 'in_progress') continue;
 
+    // Scope gate to tasks touched this session — avoid blocking for orphan in_progress.
+    if (touched.length > 0 && !touched.includes(taskId)) continue;
+
     if (!content.includes('### After-Work')) {
       const titleMatch = content.match(/^# Task:\s*(.+)$/m);
-      missing.push({ id: file.replace('.md', ''), title: titleMatch?.[1] || file });
+      missing.push({ id: taskId, title: titleMatch?.[1] || file });
     }
   }
 

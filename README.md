@@ -53,7 +53,16 @@ bash install.sh --yes --framework nodejs --name "Tên dự án" /đường/dẫn
 **Framework** (auto-detect hoặc `--framework`):  
 `nodejs`, `react`, `nextjs`, `vue`, `flutter`, `python`, `go`, `rust`, `java`, `csharp`, `php`, `ruby` — chi tiết [frameworks/README.md](frameworks/README.md).
 
-**Upgrade** (đã có harness, chỉ thêm file mới):
+**Upgrade** (đã có harness):
+
+```bash
+bash scripts/upgrade.sh /đường/dẫn/dự-án              # thêm file mới + merge hooks
+bash scripts/sync-harness-layer.sh /đường/dẫn/dự-án   # refresh hooks/agents (solo-dev, giữ .gitignore)
+bash scripts/rebuild-harness-cli.sh                   # CLI mới (query cost, …)
+node scripts/hooks/update-pm-readme.js --refresh-all  # sync README từ task statuses
+```
+
+Hoặc merge cài đặt gốc:
 
 ```bash
 bash install.sh --yes /đường/dẫn/dự-án   # merge, không ghi đè file cũ
@@ -131,19 +140,22 @@ Cập nhật `**Status:** done` trong task file sau khi pipeline + verify pass.
 
 ## Lệnh `harness-cli` (trong dự án đã cài)
 
-Binary: `scripts/bin/harness-cli` (pin **0.1.11** qua `scripts/harness-cli-release-tag`, tải lúc `install.sh`).
+Binary: `scripts/bin/harness-cli` (release pin **0.1.11** hoặc build local qua `scripts/rebuild-harness-cli.sh`).
+
+**Có sẵn hôm nay:**
 
 ```bash
 cd /đường/dẫn/dự-án-đã-cài
 
-scripts/bin/harness-cli init              # Tạo harness.db (lần đầu)
-scripts/bin/harness-cli migrate           # Apply schema migrations
-scripts/bin/harness-cli query stats       # Tổng quan
-scripts/bin/harness-cli query cost        # Cost + token coverage theo agent/lane
-scripts/bin/harness-cli query matrix      # Story / proof matrix
-scripts/bin/harness-cli query friction    # Friction gần đây
-scripts/bin/harness-cli query tools       # Tool registry (compiled + registered)
-scripts/bin/harness-cli query interventions # Intervention records
+scripts/bin/harness-cli init
+scripts/bin/harness-cli migrate
+scripts/bin/harness-cli query stats
+scripts/bin/harness-cli query cost        # token coverage + USD estimate (cần build local)
+scripts/bin/harness-cli query matrix
+scripts/bin/harness-cli query friction
+scripts/bin/harness-cli query backlog
+scripts/bin/harness-cli query traces
+scripts/bin/harness-cli score-trace
 ```
 
 | Nhóm lệnh | Ví dụ |
@@ -153,13 +165,10 @@ scripts/bin/harness-cli query interventions # Intervention records
 | **decision** | `decision add`, `decision verify ADR-001` |
 | **trace** | `trace --summary "..." --agent coder --outcome completed` |
 | **score-trace** | Chấm trace mới nhất theo [TRACE_SPEC](docs/TRACE_SPEC.md) |
-| **score-context** | Chấm mức đủ context theo [CONTEXT_RULES](docs/CONTEXT_RULES.md) |
-| **tool** | `tool register`, `tool check`, `tool remove` |
-| **intervention** | `intervention add --type correction ...` |
-| **audit/propose** | `audit`, `propose [--commit]` |
-| **db** | `db ...` (quản lý changeset DB) |
 | **backlog** | Ghi đề xuất cải thiện harness |
-| **query** | matrix, backlog, traces, friction, cost (coverage), stats (token observability), sql, … |
+| **query** | matrix, backlog, traces, friction, cost, stats, sql |
+
+**Phase 5 (docs/spec — chưa trong binary hiện tại):** `score-context`, `tool register`, `intervention add`, `query tools`, `query interventions`, `audit`, `propose`. Xem [docs/TOOL_REGISTRY.md](docs/TOOL_REGISTRY.md), [PHASE5.md](PHASE5.md).
 
 **Lưu ý:** Proof flags dùng số: `--unit 1 --integration 1`, **không** dùng `yes`/`no`.
 
@@ -189,6 +198,7 @@ Trace từ task file thường **tự sync** — không cần `trace` thủ côn
 |---|-------------|--------|
 | Config | `.claude/settings.json` | `.cursor/hooks.json` |
 | Agents | `.claude/agents/` | `.cursor/agents/` (sync từ Claude) |
+| Context shrink | `/compact` + `suggest-compact.js` | New Agent chat + `context-nudge.mjs` (warn-only) |
 | HUD | `scripts/hud/` | — |
 
 Cài Cursor layer riêng nếu cần:
@@ -198,6 +208,8 @@ bash scripts/install-cursor-layer.sh /đường/dẫn/dự-án
 ```
 
 Xem [docs/CURSOR.md](docs/CURSOR.md).
+
+**GitHub Copilot / Codex** — không có hooks; dùng [`.github/copilot-instructions.md`](.github/copilot-instructions.md) + [docs/CODEX.md](docs/CODEX.md) (workflow thủ công, `harness-cli trace` sau mỗi task).
 
 ---
 
@@ -227,8 +239,7 @@ your-project/
 Clone repo **ai-harness** (không phải thư mục app):
 
 ```bash
-cargo build --release -p harness-cli   # nếu có Rust
-cp target/release/harness-cli scripts/bin/harness-cli
+bash scripts/rebuild-harness-cli.sh      # cài rustup + build nếu cần
 bash scripts/verify-h4.sh
 node scripts/check-agent-parity.mjs
 ```
@@ -245,6 +256,7 @@ node scripts/check-agent-parity.mjs
 | [docs/FEATURE_INTAKE.md](docs/FEATURE_INTAKE.md) | Lane tiny/normal/high-risk |
 | [docs/HARNESS_VERIFICATION.md](docs/HARNESS_VERIFICATION.md) | Verify, `proof`, hooks |
 | [docs/CURSOR.md](docs/CURSOR.md) | Cursor parity |
+| [docs/CODEX.md](docs/CODEX.md) | Copilot/Codex (manual workflow) |
 | [docs/TOKEN_EFFICIENCY.md](docs/TOKEN_EFFICIENCY.md) | RTK, MCP |
 | [docs/LANGFUSE.md](docs/LANGFUSE.md) | Export trace ra Langfuse (prod observability/cost) |
 | [scripts/README.md](scripts/README.md) | CLI + scripts chi tiết |

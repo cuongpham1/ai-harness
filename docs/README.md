@@ -7,7 +7,8 @@ target projects.
 
 - `HARNESS.md`: hybrid collaboration model (Claude Code + Cursor + durable layer).
 - `CURSOR.md`: Cursor hooks, rules, and subagent setup (full parity).
-- `TOKEN_EFFICIENCY.md`: RTK, caveman, compact, lane pipeline token savings.
+- `CODEX.md`: GitHub Copilot and Codex manual workflow (no hooks).
+- `TOKEN_EFFICIENCY.md`: RTK, caveman, context handoff (Claude `/compact` vs Cursor new chat), lane pipeline token savings.
 - `LANGFUSE.md`: optional external trace export for production observability and token analytics.
 - `MCP_SETUP.md`: MCP config for Cursor vs Claude Code.
 - `FEATURE_INTAKE.md`: tiny, normal, and high-risk work classification.

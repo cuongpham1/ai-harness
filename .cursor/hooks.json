@@ -22,6 +22,10 @@
         "matcher": "Task",
         "command": "node scripts/hooks/pre-agent-codegraph.mjs",
         "failClosed": false
+      },
+      {
+        "command": "node scripts/hooks/cursor/context-nudge.mjs",
+        "failClosed": false
       }
     ],
     "postToolUse": [

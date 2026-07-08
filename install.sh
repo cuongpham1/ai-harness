@@ -266,6 +266,11 @@ install_framework() {
     chmod +x "$target/scripts/rtk-flutter.sh" 2>/dev/null || true
     echo "  ✓ scripts/rtk-flutter.sh"
   fi
+  if [[ "$framework" == "swift" && -f "$fw_dir/scripts/rtk-swift.sh" ]]; then
+    cp "$fw_dir/scripts/rtk-swift.sh" "$target/scripts/rtk-swift.sh"
+    chmod +x "$target/scripts/rtk-swift.sh" 2>/dev/null || true
+    echo "  ✓ scripts/rtk-swift.sh"
+  fi
   if [[ "$framework" == "nodejs" || "$framework" == "react" || "$framework" == "nextjs" ]]; then
     for rtk in rtk-shell.sh rtk-node.sh; do
       if [[ -f "$harness_dir/scripts/$rtk" ]]; then
@@ -523,6 +528,7 @@ copy_file "scripts/install-harness.sh"
 copy_dir "scripts/schema"
 copy_dir "templates"
 copy_dir "docs"
+copy_file ".github/copilot-instructions.md"
 copy_dir "benchmark"
 chmod +x "$TARGET/scripts/merge-agents-md.sh" 2>/dev/null || true
 chmod +x "$TARGET/scripts/verify-h3.sh" 2>/dev/null || true
